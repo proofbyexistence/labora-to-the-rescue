@@ -1,3 +1,6 @@
+/**
+ * Client-side validation and fetch wrappers for server-proxied Gemini AI routes.
+ */
 import type { AllocationResult } from './scheduler';
 import { hasControlChars, normalizeText } from './validation';
 

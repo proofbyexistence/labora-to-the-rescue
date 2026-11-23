@@ -1,5 +1,10 @@
+/**
+ * Root router, URL hash/pathname synchronizer, page metadata updater, and modal host.
+ */
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Home } from 'lucide-react';
 import type { PageId } from './components/EquipmentCard';
+import { HeroBenchDoodle } from './components/LabDoodles';
 import { Layout, type BreadcrumbItem } from './components/Layout';
 import {
   parseHashState,
@@ -51,7 +56,15 @@ function readInitialHash() {
   const items = getItems();
   const rawSearch = typeof window !== 'undefined' ? window.location.search : '';
   const rawHash = typeof window !== 'undefined' ? window.location.hash : '';
-  return parseUrlState(rawSearch, rawHash, { departments, labs, items });
+  const parsed = parseUrlState(rawSearch, rawHash, { departments, labs, items });
+  if (
+    typeof window !== 'undefined' &&
+    window.location.pathname !== '/' &&
+    window.location.pathname !== '/index.html'
+  ) {
+    return { ...parsed, page: 'not-found' as const };
+  }
+  return parsed;
 }
 
 export default function App() {
@@ -83,6 +96,10 @@ export default function App() {
         catalogPage: next.catalogPage,
         itemId: next.itemId,
       });
+      if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+        window.history.replaceState(null, '', `/${targetHash}`);
+        return;
+      }
       if (window.location.hash !== targetHash) {
         window.location.hash = targetHash;
       }
@@ -110,20 +127,42 @@ export default function App() {
     if (typeof document === 'undefined') return;
     const departments = getDepartments();
     const labs = getLabs();
+    let title = 'LABORA — Every lab. One notebook.';
+    let description =
+      'Every lab. One notebook. Discover campus laboratory equipment, book instrument slots, submit access requests, and manage faculty approvals.';
+
     if (currentPage === 'discover') {
       const lab = labs.find((l) => l.id === discoverFilters.labId);
       const dept = departments.find((d) => d.id === discoverFilters.departmentId);
       const scope = lab?.name || dept?.name;
-      document.title = scope ? `Discover · ${scope} — LABORA` : 'Discover Equipment — LABORA';
+      title = scope ? `Discover · ${scope} — LABORA` : 'Discover Equipment — LABORA';
+      description = scope
+        ? `Browse and filter shared campus laboratory instruments and safety requirements for ${scope} on LABORA.`
+        : 'Search and filter campus laboratory instruments, development kits, workstations, and safety gear across seven departments.';
     } else if (currentPage === 'booking') {
       const item = getItemById(selectedItemId);
-      document.title = item ? `Smart Booking · ${item.name} — LABORA` : 'Smart Booking — LABORA';
+      title = item ? `Smart Booking · ${item.name} — LABORA` : 'Smart Booking — LABORA';
+      description = item
+        ? `Inspect weekly Mon–Sat lab availability and reserve bench slots for ${item.name} on LABORA.`
+        : 'Reserve weekly Mon–Sat lab slots and resolve competing student requests with deterministic fair allocation.';
     } else if (currentPage === 'request') {
-      document.title = 'Request Lab Access — LABORA';
+      title = 'Request Lab Access — LABORA';
+      description =
+        'Submit project-based access requests for restricted or training-required campus laboratory instruments and track approval progress.';
     } else if (currentPage === 'approvals') {
-      document.title = 'Faculty Approvals & Manage — LABORA';
-    } else {
-      document.title = 'LABORA — Every lab. One notebook.';
+      title = 'Faculty Approvals & Manage — LABORA';
+      description =
+        'Review student access requests, resolve scheduling conflicts, track lab utilization analytics, and manage subjects, labs, items, and slots.';
+    } else if (currentPage === 'not-found') {
+      title = 'Page Not Found — LABORA';
+      description =
+        'The requested LABORA notebook section could not be found. Return home to browse campus labs and equipment.';
+    }
+
+    document.title = title;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute('content', description);
     }
   }, [currentPage, discoverFilters.departmentId, discoverFilters.labId, selectedItemId]);
 
@@ -289,7 +328,12 @@ export default function App() {
       return crumbs;
     }
 
-    crumbs.push({ label: 'Faculty Approvals' });
+    if (currentPage === 'approvals') {
+      crumbs.push({ label: 'Faculty Approvals' });
+      return crumbs;
+    }
+
+    crumbs.push({ label: 'Page not found' });
     return crumbs;
   };
 
@@ -373,6 +417,31 @@ export default function App() {
             onNavigate={handleNavigate}
             onDataMutated={refreshData}
           />
+        )}
+
+        {currentPage === 'not-found' && (
+          <section className="notebook-sheet p-8 text-center">
+            <HeroBenchDoodle className="mx-auto mb-4 h-36 w-auto" />
+            <h1 className="text-3xl font-bold text-[var(--ink)] sm:text-4xl">
+              Page not found (404)
+            </h1>
+            <p className="mx-auto mt-2 max-w-lg text-base text-[var(--ink)]">
+              That page or section is not in the LABORA campus notebook. Return home to browse departments, reserve lab slots, or submit an access request.
+            </p>
+            <div className="mt-5 flex justify-center">
+              <a
+                href="#home"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleNavigate('home', { departmentId: '', labId: '' });
+                }}
+                className="labora-btn"
+              >
+                <Home className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Back to Home</span>
+              </a>
+            </div>
+          </section>
         )}
 
         {inspectedItem && (

@@ -17,17 +17,31 @@ export function normalizeText(value: string): string {
   return value.trim().replace(/\s+/g, ' ');
 }
 
-export function isValidIsoDate(value: string): boolean {
+export function parseIsoDateUtc(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
+    return null;
   }
   const [y, m, d] = value.split('-').map((n) => Number.parseInt(n, 10));
   const dt = new Date(Date.UTC(y, m - 1, d));
-  return (
-    dt.getUTCFullYear() === y &&
-    dt.getUTCMonth() === m - 1 &&
-    dt.getUTCDate() === d
-  );
+  if (
+    dt.getUTCFullYear() !== y ||
+    dt.getUTCMonth() !== m - 1 ||
+    dt.getUTCDate() !== d
+  ) {
+    return null;
+  }
+  return dt;
+}
+
+export function addDaysIso(isoDate: string, offsetDays: number): string {
+  const dt = parseIsoDateUtc(isoDate);
+  if (!dt) return isoDate;
+  dt.setUTCDate(dt.getUTCDate() + offsetDays);
+  return dt.toISOString().slice(0, 10);
+}
+
+export function isValidIsoDate(value: string): boolean {
+  return parseIsoDateUtc(value) !== null;
 }
 
 export function isSafeString(

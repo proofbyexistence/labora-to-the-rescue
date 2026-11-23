@@ -1,3 +1,6 @@
+/**
+ * Request Access page: multi-item clearance submission form, validation, and request status tracker.
+ */
 import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import {
   AlertTriangle,

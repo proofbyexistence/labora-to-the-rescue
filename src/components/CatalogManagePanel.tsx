@@ -1,3 +1,6 @@
+/**
+ * Faculty catalog management workspace UI for subjects, labs, equipment items, and bench slots.
+ */
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   AlertTriangle,

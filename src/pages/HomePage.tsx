@@ -1,3 +1,6 @@
+/**
+ * Home notebook spread: platform summary, live KPI strip, department directory, and open items.
+ */
 import { useMemo, type MouseEvent } from 'react';
 import { ArrowRight, BookOpenCheck, CheckCircle2, Compass } from 'lucide-react';
 import { EquipmentCard, type PageId } from '../components/EquipmentCard';

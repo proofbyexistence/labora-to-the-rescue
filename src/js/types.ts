@@ -1,3 +1,6 @@
+/**
+ * Shared TypeScript domain interfaces for departments, labs, equipment, slots, and requests.
+ */
 export type EquipmentType = 'Instruments' | 'Development kits' | 'Workstations' | 'Safety gear';
 
 export type AvailabilityStatus = 'Available' | 'Limited' | 'Booked';

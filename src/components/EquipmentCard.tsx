@@ -1,8 +1,12 @@
+/**
+ * Reusable equipment card presenting status, access rules, doodle artwork, and booking actions.
+ */
 import { AlertTriangle, CalendarClock, CheckCircle2, Info, XCircle } from 'lucide-react';
+import type { AppPageId } from '../js/filter';
 import type { EquipmentItem } from '../js/types';
 import { EquipmentDoodle } from './LabDoodles';
 
-export type PageId = 'home' | 'discover' | 'booking' | 'request' | 'approvals';
+export type PageId = AppPageId;
 
 interface EquipmentCardProps {
   item: EquipmentItem;

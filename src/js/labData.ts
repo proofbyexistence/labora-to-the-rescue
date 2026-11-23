@@ -1,3 +1,6 @@
+/**
+ * Browser state store hydrating seed catalog data with validated localStorage persistence.
+ */
 import seedData from '../data/labs.json';
 import {
   addDepartment as pureAddDepartment,
@@ -548,13 +551,6 @@ export function getRequests(filters: RequestFilters = {}): AccessRequest[] {
     .map((req) => ({ ...req }));
 }
 
-export function getUsers(): Record<UserRole, CampusUser> {
-  return {
-    student: { ...state.dataset.users.student },
-    faculty: { ...state.dataset.users.faculty },
-  };
-}
-
 export function getCurrentUser(): CampusUser {
   return { ...state.dataset.users[state.activeRole] };
 }
@@ -584,26 +580,6 @@ function syncItemAvailabilityFromSlots(itemId: string): void {
     const next = openSlots[0];
     item.nextFreeSlot = `${next.date.slice(5)} · ${next.window.split(' ')[0]}`;
   }
-}
-
-export function bookSlot(slotId: string, itemId: string, note = ''): TimeSlot | null {
-  if (hasControlChars(note)) {
-    return null;
-  }
-  const slot = state.dataset.slots.find(
-    (entry) => entry.id === slotId && entry.itemId === itemId
-  );
-  if (!slot || slot.booked) {
-    return null;
-  }
-
-  const user = getCurrentUser();
-  slot.booked = true;
-  slot.bookedBy = user.name;
-  slot.note = normalizeText(note).slice(0, 200) || 'Lab notebook session';
-  syncItemAvailabilityFromSlots(itemId);
-  persistState();
-  return { ...slot };
 }
 
 export function cancelSlotBooking(slotId: string, itemId: string): TimeSlot | null {

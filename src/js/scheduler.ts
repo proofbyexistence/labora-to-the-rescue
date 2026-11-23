@@ -1,10 +1,18 @@
+/**
+ * Pure booking validation, conflict detection, and deterministic fair-allocation scoring.
+ */
 import type {
   AccessRequest,
   CampusUser,
   EquipmentItem,
   TimeSlot,
 } from './types';
-import { hasControlChars, normalizeText } from './validation.ts';
+import {
+  addDaysIso,
+  hasControlChars,
+  normalizeText,
+  parseIsoDateUtc,
+} from './validation.ts';
 
 // Adjustable allocation weights (must sum to 100).
 export const ALLOCATION_WEIGHTS = {
@@ -114,29 +122,6 @@ export function parseHour(timeStr: string): number {
     return Number.NaN;
   }
   return hour;
-}
-
-function parseIsoDateUtc(dateStr: string): Date | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-    return null;
-  }
-  const [y, m, d] = dateStr.split('-').map((n) => Number.parseInt(n, 10));
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  if (
-    dt.getUTCFullYear() !== y ||
-    dt.getUTCMonth() !== m - 1 ||
-    dt.getUTCDate() !== d
-  ) {
-    return null;
-  }
-  return dt;
-}
-
-function addDaysIso(dateStr: string, offsetDays: number): string {
-  const dt = parseIsoDateUtc(dateStr);
-  if (!dt) return dateStr;
-  dt.setUTCDate(dt.getUTCDate() + offsetDays);
-  return dt.toISOString().slice(0, 10);
 }
 
 /**

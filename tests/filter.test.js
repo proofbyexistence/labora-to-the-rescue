@@ -224,6 +224,12 @@ describe('parseHashState, parseUrlState, and serializeHashState', () => {
 
     const badUrl = parseUrlState('?page=javascript:alert(1)&unknown=dropTable', '', valid);
     assert.equal(badUrl.page, 'home');
+
+    const unknownHash = parseHashState('#nonexistent-section', valid);
+    assert.equal(unknownHash.page, 'not-found');
+
+    const skipAnchor = parseHashState('#main-content', valid);
+    assert.equal(skipAnchor.page, 'home');
   });
 
   it('serializes discover and booking state into clean bookmarkable hashes', () => {

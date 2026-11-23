@@ -1,3 +1,6 @@
+/**
+ * Pure equipment filtering, pagination, and sanitized URL hash/query state parsing.
+ */
 import type {
   AccessLevel,
   AvailabilityStatus,
@@ -29,7 +32,13 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
-export type AppPageId = 'home' | 'discover' | 'booking' | 'request' | 'approvals';
+export type AppPageId =
+  | 'home'
+  | 'discover'
+  | 'booking'
+  | 'request'
+  | 'approvals'
+  | 'not-found';
 
 export interface ParsedHashState {
   page: AppPageId;
@@ -261,6 +270,8 @@ export function parseHashState(
     }
   } else if (VALID_PAGES.includes(cleaned as AppPageId)) {
     page = cleaned as AppPageId;
+  } else if (cleaned !== 'main-content') {
+    page = 'not-found';
   }
 
   const params = new URLSearchParams(querySegment);

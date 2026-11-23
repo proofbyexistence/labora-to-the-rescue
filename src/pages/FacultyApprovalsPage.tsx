@@ -1,3 +1,6 @@
+/**
+ * Faculty Approvals & Manage page: approval queue, conflict/utilization analytics, and catalog tabs.
+ */
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   AlertTriangle,

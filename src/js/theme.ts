@@ -1,3 +1,6 @@
+/**
+ * Light/dark theme state detection, persistence, and OS color-scheme synchronization.
+ */
 export type ThemeMode = 'light' | 'dark';
 
 export const THEME_STORAGE_KEY = 'labora_theme_v1';

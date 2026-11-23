@@ -17,11 +17,11 @@ This document summarizes the security controls implemented in **LABORA**, how se
   - `default-src 'self'`
   - `script-src 'self'`
   - `style-src 'self' https://fonts.googleapis.com` in production (`NODE_ENV=production`); in development only, `'unsafe-inline'` is permitted solely so Vite's dev middleware can inject CSS modules.
-  - `font-src https://fonts.gstatic.com`
+  - `font-src 'self' https://fonts.gstatic.com`
   - `img-src 'self' data:`
-  - `connect-src 'self'`
+  - `connect-src 'self'` in production (`NODE_ENV=production`); `ws: wss:` added in development only for Vite dev client sockets
   - `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`
-  - `frame-ancestors 'self' https://aistudio.google.com https://*.google.com https://*.googleusercontent.com` (scoped for the AI Studio live preview iframe)
+  - `frame-ancestors 'self' https://aistudio.google.com https://*.google.com https://*.googleusercontent.com https://*.usercontent.goog` (scoped for the AI Studio live preview iframe)
 - **Additional Response Headers**:
   - `X-Content-Type-Options: nosniff`
   - `Referrer-Policy: strict-origin-when-cross-origin`

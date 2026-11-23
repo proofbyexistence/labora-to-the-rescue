@@ -1,3 +1,6 @@
+/**
+ * Sliding-window per-IP rate limiter protecting /api endpoints against burst traffic.
+ */
 import type { NextFunction, Request, Response } from 'express';
 
 const WINDOW_MS = 60_000;

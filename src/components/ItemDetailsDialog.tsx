@@ -1,3 +1,6 @@
+/**
+ * Accessible focus-trapped equipment specification modal with booking and access shortcuts.
+ */
 import { useEffect, useRef } from 'react';
 import {
   AlertTriangle,

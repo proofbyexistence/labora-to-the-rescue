@@ -1,6 +1,10 @@
+/**
+ * Pure lab utilization percentages, underused-item ranking, and summary KPI calculations.
+ */
 import { isPendingStatus } from './requests';
 import { DEFAULT_REFERENCE_DATE, detectConflicts } from './scheduler';
 import type { AccessRequest, EquipmentItem, Lab, TimeSlot } from './types';
+import { addDaysIso } from './validation';
 
 export interface LabUtilizationStat {
   labId: string;
@@ -24,13 +28,6 @@ export interface LabAnalyticsSummary {
   approvedThisWeek: number;
   openConflicts: number;
   overallUtilizationPct: number;
-}
-
-function addDaysIso(isoDate: string, offsetDays: number): string {
-  const [y, m, d] = isoDate.split('-').map((part) => Number.parseInt(part, 10));
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  dt.setUTCDate(dt.getUTCDate() + offsetDays);
-  return dt.toISOString().slice(0, 10);
 }
 
 /**

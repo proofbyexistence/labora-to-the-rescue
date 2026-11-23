@@ -1,3 +1,6 @@
+/**
+ * Role-guarded pure catalog CRUD operations and cascade-safe dependent deletion rules.
+ */
 import {
   DEFAULT_REFERENCE_DATE,
   formatHour,
@@ -16,7 +19,7 @@ import type {
   TimeSlot,
   UserRole,
 } from './types';
-import { hasControlChars, normalizeText } from './validation';
+import { hasControlChars, normalizeText, parseIsoDateUtc } from './validation';
 
 export interface CatalogSnapshot {
   departments: Department[];
@@ -143,22 +146,6 @@ function generateUniqueId(
     counter += 1;
   }
   return `${base}-${counter}`;
-}
-
-function parseIsoDateUtc(isoDate: string): Date | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
-    return null;
-  }
-  const [y, m, d] = isoDate.split('-').map((n) => Number.parseInt(n, 10));
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  if (
-    dt.getUTCFullYear() !== y ||
-    dt.getUTCMonth() !== m - 1 ||
-    dt.getUTCDate() !== d
-  ) {
-    return null;
-  }
-  return dt;
 }
 
 function parseTimeRangeForSlot(slot: TimeSlot): { startHour: number; endHour: number } | null {

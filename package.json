@@ -1,7 +1,8 @@
 {
-  "name": "react-example",
+  "name": "labora-campus-lab-notebook",
+  "version": "1.0.0",
+  "description": "LABORA (LabLink): Every lab. One notebook. Campus laboratory equipment discovery, smart slot booking, access requests, and faculty approvals.",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",

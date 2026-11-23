@@ -1,3 +1,6 @@
+/**
+ * Express /api router for Gemini equipment suggestions and plain-language allocation summaries.
+ */
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { Type } from '@google/genai';
 import {
@@ -68,6 +71,7 @@ export function isValidAllocationPayload(body: unknown): body is AllocationResul
     !Array.isArray(candidate.assignments) ||
     !Array.isArray(candidate.ranked) ||
     !Array.isArray(candidate.alternatives) ||
+    !Array.isArray(candidate.reasons) ||
     !candidate.feasible ||
     typeof candidate.feasible !== 'object'
   ) {
@@ -78,7 +82,9 @@ export function isValidAllocationPayload(body: unknown): body is AllocationResul
     candidate.assignments.length > 20 ||
     candidate.ranked.length === 0 ||
     candidate.ranked.length > 20 ||
-    candidate.alternatives.length > 20
+    candidate.alternatives.length > 20 ||
+    candidate.reasons.length > 20 ||
+    !candidate.reasons.every((reason) => typeof reason === 'string')
   ) {
     return false;
   }

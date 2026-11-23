@@ -1,3 +1,6 @@
+/**
+ * Lazy server-side @google/genai client wrapper with request timeout and markup stripping.
+ */
 import { GoogleGenAI } from '@google/genai';
 
 // Default Gemini model recommended by AI Studio for fast structured/plain-text tasks.

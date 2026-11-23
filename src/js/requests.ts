@@ -1,3 +1,6 @@
+/**
+ * Pure access request validation, status-transition state machine, and review suggestions.
+ */
 import { DEFAULT_REFERENCE_DATE, scoreRequest } from './scheduler';
 import type {
   AccessRequest,
@@ -8,7 +11,7 @@ import type {
   TimeSlot,
   UserRole,
 } from './types';
-import { hasControlChars, normalizeText } from './validation';
+import { hasControlChars, normalizeText, parseIsoDateUtc } from './validation';
 
 export type RequestFieldKey =
   | 'project'
@@ -48,22 +51,6 @@ export const ALLOWED_REQUEST_TRANSITIONS: Record<RequestStatus, RequestStatus[]>
 
 export function isPendingStatus(status: RequestStatus): boolean {
   return status === 'Submitted' || status === 'Under review';
-}
-
-function parseIsoDateUtc(isoDate: string): Date | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
-    return null;
-  }
-  const [y, m, d] = isoDate.split('-').map((part) => Number.parseInt(part, 10));
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  if (
-    dt.getUTCFullYear() !== y ||
-    dt.getUTCMonth() !== m - 1 ||
-    dt.getUTCDate() !== d
-  ) {
-    return null;
-  }
-  return dt;
 }
 
 /**

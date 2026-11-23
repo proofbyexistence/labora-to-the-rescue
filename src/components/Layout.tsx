@@ -1,3 +1,6 @@
+/**
+ * Shared application shell: navbar, Lab Index sidebar, breadcrumbs, role/theme toggles, and footer.
+ */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ChevronRight,

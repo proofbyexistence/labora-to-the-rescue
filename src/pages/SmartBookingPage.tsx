@@ -1,3 +1,6 @@
+/**
+ * Smart Booking workspace: Mon–Sat weekly schedule table, slot reservations, and conflict resolution.
+ */
 import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from 'react';
 import {
   AlertTriangle,
@@ -47,6 +50,7 @@ import {
   validateBooking,
 } from '../js/scheduler';
 import type { CampusUser, EquipmentItem } from '../js/types';
+import { addDaysIso } from '../js/validation';
 
 interface SmartBookingPageProps {
   selectedItemId: string;
@@ -72,13 +76,6 @@ const START_HOURS = Array.from(
   { length: LAB_END_HOUR - LAB_START_HOUR },
   (_, idx) => LAB_START_HOUR + idx
 );
-
-function shiftIsoDate(dateStr: string, offsetDays: number): string {
-  const [y, m, d] = dateStr.split('-').map((n) => Number.parseInt(n, 10));
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  dt.setUTCDate(dt.getUTCDate() + offsetDays);
-  return dt.toISOString().slice(0, 10);
-}
 
 function formatDayHeader(isoDate: string): { weekday: string; shortDate: string } {
   const [y, m, d] = isoDate.split('-').map((n) => Number.parseInt(n, 10));
@@ -711,7 +708,7 @@ export function SmartBookingPage({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setWeekAnchor((prev) => shiftIsoDate(prev, -7))}
+                onClick={() => setWeekAnchor((prev) => addDaysIso(prev, -7))}
                 className="labora-btn labora-btn-paper !px-3 text-sm"
                 aria-label="Previous week"
               >
@@ -720,7 +717,7 @@ export function SmartBookingPage({
               </button>
               <button
                 type="button"
-                onClick={() => setWeekAnchor((prev) => shiftIsoDate(prev, 7))}
+                onClick={() => setWeekAnchor((prev) => addDaysIso(prev, 7))}
                 className="labora-btn labora-btn-paper !px-3 text-sm"
                 aria-label="Next week"
               >

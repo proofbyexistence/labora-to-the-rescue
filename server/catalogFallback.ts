@@ -1,3 +1,6 @@
+/**
+ * Server-side catalog loader and deterministic keyword fallback for equipment suggestions.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { filterItems } from '../src/js/filter.ts';

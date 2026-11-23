@@ -1,3 +1,6 @@
+/**
+ * Discover catalog page: multi-faceted equipment filtering, pagination, and AI project finder.
+ */
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw, Search, Sparkles } from 'lucide-react';
 import { EquipmentCard, type PageId } from '../components/EquipmentCard';

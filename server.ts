@@ -1,3 +1,6 @@
+/**
+ * Express server entry point providing security headers, compression, /api routing, and SPA serving.
+ */
 import 'dotenv/config';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import fs from 'node:fs';
@@ -32,18 +35,24 @@ function buildSecurityCsp(): string {
     : // Development exception: Vite dev middleware dynamically injects component CSS into <style> tags.
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com";
 
+  const connectSrc = isProduction
+    ? "connect-src 'self'"
+    : // Development exception: Vite client opens WebSocket checks on port 24678 in dev mode.
+      "connect-src 'self' ws: wss:";
+
   return [
     "default-src 'self'",
     "script-src 'self'",
     styleSrc,
-    'font-src https://fonts.gstatic.com',
+    // Font exception: allow Google Fonts static CDN alongside same-origin font assets.
+    "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data:",
-    "connect-src 'self'",
+    connectSrc,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    // Preview exception: AI Studio renders the live app inside an embedded Google preview iframe.
-    "frame-ancestors 'self' https://aistudio.google.com https://*.google.com https://*.googleusercontent.com",
+    // Preview exception: AI Studio embeds the live preview inside nested *.google.com / *.usercontent.goog iframes.
+    "frame-ancestors 'self' https://aistudio.google.com https://*.google.com https://*.googleusercontent.com https://*.usercontent.goog",
   ].join('; ');
 }
 
@@ -267,7 +276,7 @@ async function startServer() {
         },
       })
     );
-    app.get('/{*splat}', (_req, res) => {
+    app.get('*', (_req, res) => {
       const indexFile = path.join(distDir, 'index.html');
       if (fs.existsSync(indexFile)) {
         res.setHeader('Cache-Control', 'no-cache, must-revalidate');

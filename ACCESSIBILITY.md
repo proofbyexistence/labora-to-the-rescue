@@ -81,7 +81,7 @@ This document details the accessibility architecture implemented in **LABORA**, 
 2. **Forms & Screen Reader Verification**: Submit empty/invalid forms on Discover, Smart Booking, Request Access, and Manage modals; verify `aria-invalid`, `role="alert"`, and focus moving to the first invalid field. Verify live counts/status updates announce via screen reader (VoiceOver / NVDA).
 3. **Zoom, Reflow & Text Spacing**: Resize viewport to `320px` wide and test `200%` / `400%` browser zoom with no horizontal scrollbar on the main document. Apply text-spacing overrides (`line-height: 1.5`, `letter-spacing: 0.12em`, `word-spacing: 0.16em`) to verify cards and labels do not clip.
 4. **Reduced Motion & Themes**: Toggle Dark/Light mode and enable `prefers-reduced-motion: reduce` in OS or browser DevTools to verify static daydream frame, disabled transitions, and >= 4.5:1 text / >= 3:1 focus ring contrast.
-5. **Automated Checks**: Run `npx tsx src/tests/labData.test.ts`, `npm run lint`, and `npm run build`.
+5. **Automated Checks**: Run `npm test`, `npm run lint`, and `npm run build`.
 
 ---
 
