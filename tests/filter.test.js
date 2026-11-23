@@ -8,6 +8,12 @@ import {
   serializeHashState,
 } from '../src/js/filter.ts';
 import { buildDepartment, buildItem, buildLab } from './helpers.js';
+import {
+  ACCESS_LEVELS,
+  AVAILABILITY_STATUSES,
+  EQUIPMENT_TYPES,
+  LIMITS,
+} from '../src/js/constants.ts';
 
 function createFilterFixture() {
   const departments = [
@@ -28,9 +34,9 @@ function createFilterFixture() {
       name: 'UV-Vis Optical Spectrometer',
       departmentId: 'dept-physics',
       labId: 'lab-phy-optics',
-      type: 'Instruments',
-      status: 'Available',
-      accessLevel: 'Open',
+      type: EQUIPMENT_TYPES[0],
+      status: AVAILABILITY_STATUSES[0],
+      accessLevel: ACCESS_LEVELS[0],
       specs: '190–1100 nm wavelength range, fiber-coupled detector',
     }),
     buildItem({
@@ -38,9 +44,9 @@ function createFilterFixture() {
       name: 'Xilinx Artix-7 FPGA Kit',
       departmentId: 'dept-ece',
       labId: 'lab-ece-fpga',
-      type: 'Development kits',
-      status: 'Available',
-      accessLevel: 'Needs faculty approval',
+      type: EQUIPMENT_TYPES[1],
+      status: AVAILABILITY_STATUSES[0],
+      accessLevel: ACCESS_LEVELS[1],
       specs: '100 MHz oscillator, JTAG USB bridge, logic analyzer header',
     }),
     buildItem({
@@ -48,9 +54,9 @@ function createFilterFixture() {
       name: 'Thermal Imaging Workstation',
       departmentId: 'dept-ece',
       labId: 'lab-ece-fpga',
-      type: 'Workstations',
-      status: 'Limited',
-      accessLevel: 'Training required',
+      type: EQUIPMENT_TYPES[2],
+      status: AVAILABILITY_STATUSES[1],
+      accessLevel: ACCESS_LEVELS[2],
       specs: 'Dual-GPU CUDA workstation with CAD suite',
     }),
     buildItem({
@@ -58,9 +64,9 @@ function createFilterFixture() {
       name: 'Class II Biosafety Hood',
       departmentId: 'dept-biotech',
       labId: 'lab-bio-micro',
-      type: 'Safety gear',
-      status: 'Booked',
-      accessLevel: 'Training required',
+      type: EQUIPMENT_TYPES[3],
+      status: AVAILABILITY_STATUSES[2],
+      accessLevel: ACCESS_LEVELS[2],
       specs: 'HEPA laminar airflow cabinet with UV sterilization',
     }),
   ];
@@ -110,15 +116,15 @@ describe('filterItems search and criteria matching', () => {
       ['eq-phy-01']
     );
     assert.deepEqual(
-      filterItems(items, { type: 'Workstations' }, { departments, labs }).map((i) => i.id),
+      filterItems(items, { type: EQUIPMENT_TYPES[2] }, { departments, labs }).map((i) => i.id),
       ['eq-ece-02']
     );
     assert.deepEqual(
-      filterItems(items, { status: 'Booked' }, { departments, labs }).map((i) => i.id),
+      filterItems(items, { status: AVAILABILITY_STATUSES[2] }, { departments, labs }).map((i) => i.id),
       ['eq-bio-01']
     );
     assert.deepEqual(
-      filterItems(items, { accessLevel: 'Training required' }, { departments, labs }).map((i) => i.id),
+      filterItems(items, { accessLevel: ACCESS_LEVELS[2] }, { departments, labs }).map((i) => i.id),
       ['eq-ece-02', 'eq-bio-01']
     );
   });
@@ -129,9 +135,9 @@ describe('filterItems search and criteria matching', () => {
       items,
       {
         departmentId: 'dept-ece',
-        type: 'Workstations',
-        status: 'Limited',
-        accessLevel: 'Training required',
+        type: EQUIPMENT_TYPES[2],
+        status: AVAILABILITY_STATUSES[1],
+        accessLevel: ACCESS_LEVELS[2],
         query: 'cuda',
       },
       { departments, labs }
@@ -143,7 +149,7 @@ describe('filterItems search and criteria matching', () => {
     const { departments, labs, items } = createFilterFixture();
     assert.deepEqual(filterItems(items, { query: 'cryo-electron-999' }, { departments, labs }), []);
     assert.deepEqual(
-      filterItems(items, { departmentId: 'dept-physics', type: 'Safety gear' }, { departments, labs }),
+      filterItems(items, { departmentId: 'dept-physics', type: EQUIPMENT_TYPES[3] }, { departments, labs }),
       []
     );
   });
@@ -172,7 +178,7 @@ describe('paginateItems', () => {
     assert.equal(high.page, 2);
     assert.deepEqual(high.items.map((i) => i.id), ['eq-ece-02', 'eq-bio-01']);
 
-    const empty = paginateItems([], 2, 9);
+    const empty = paginateItems([], 2, LIMITS.CATALOG_PAGE_SIZE);
     assert.equal(empty.totalItems, 0);
     assert.equal(empty.totalPages, 1);
     assert.equal(empty.page, 1);
@@ -186,9 +192,9 @@ describe('parseHashState, parseUrlState, and serializeHashState', () => {
     const parsed = parseHashState('#dept=electronics&type=dev-kits&status=available&access=faculty-approval&q=%20FPGA%20&p=2', valid);
     assert.equal(parsed.page, 'discover');
     assert.equal(parsed.filters.departmentId, 'dept-ece');
-    assert.equal(parsed.filters.type, 'Development kits');
-    assert.equal(parsed.filters.status, 'Available');
-    assert.equal(parsed.filters.accessLevel, 'Needs faculty approval');
+    assert.equal(parsed.filters.type, EQUIPMENT_TYPES[1]);
+    assert.equal(parsed.filters.status, AVAILABILITY_STATUSES[0]);
+    assert.equal(parsed.filters.accessLevel, ACCESS_LEVELS[1]);
     assert.equal(parsed.filters.query, 'FPGA');
     assert.equal(parsed.catalogPage, 2);
   });
@@ -219,7 +225,7 @@ describe('parseHashState, parseUrlState, and serializeHashState', () => {
     assert.equal(parsed.filters.query.includes('<'), false);
     assert.equal(parsed.filters.query.includes('>'), false);
     assert.equal(parsed.filters.query.includes('\u0007'), false);
-    assert.ok(parsed.filters.query.length <= 80);
+    assert.ok(parsed.filters.query.length <= LIMITS.PROJECT_MAX);
     assert.equal(parsed.itemId, 'eq-phy-01');
 
     const badUrl = parseUrlState('?page=javascript:alert(1)&unknown=dropTable', '', valid);

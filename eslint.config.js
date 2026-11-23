@@ -1,0 +1,43 @@
+export default [
+  {
+    ignores: ['dist/**', 'node_modules/**'],
+  },
+  {
+    files: ['**/*.{js,mjs,ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        localStorage: 'readonly',
+        fetch: 'readonly',
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+        IntersectionObserver: 'readonly',
+        HTMLButtonElement: 'readonly',
+        HTMLDivElement: 'readonly',
+        HTMLElement: 'readonly',
+        HTMLInputElement: 'readonly',
+        HTMLSelectElement: 'readonly',
+        HTMLTextAreaElement: 'readonly',
+        KeyboardEvent: 'readonly',
+        MediaQueryListEvent: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+      },
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-undef': 'error',
+      eqeqeq: ['error', 'always'],
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+    },
+  },
+];

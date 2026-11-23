@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "./css/tokens.css";
+@import "./css/base.css";
+@import "./css/sidebar.css";
 @import "./css/pages.css";
 @import "./css/daydream.css";
 

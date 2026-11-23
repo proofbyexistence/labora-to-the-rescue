@@ -1,4 +1,12 @@
-export const FIXED_TODAY = '2026-11-23'; // Monday
+import {
+  ACCESS_LEVELS,
+  AVAILABILITY_STATUSES,
+  EQUIPMENT_TYPES,
+  LAB_SCHEDULE,
+  ROLES,
+} from '../src/js/constants.ts';
+
+export const FIXED_TODAY = LAB_SCHEDULE.DEFAULT_REFERENCE_DATE; // Monday
 export const FIXED_TUESDAY = '2026-11-24';
 export const FIXED_WEDNESDAY = '2026-11-25';
 export const FIXED_SATURDAY = '2026-11-28';
@@ -37,10 +45,10 @@ export function buildItem(overrides = {}) {
     name: 'UV-Vis Optical Spectrometer',
     departmentId: 'dept-physics',
     labId: 'lab-phy-optics',
-    type: 'Instruments',
+    type: EQUIPMENT_TYPES[0],
     location: 'SHN-204 · Bench A',
-    status: 'Available',
-    accessLevel: 'Open',
+    status: AVAILABILITY_STATUSES[0],
+    accessLevel: ACCESS_LEVELS[0],
     nextFreeSlot: '11-24 · 09:00',
     specs: '190–1100 nm wavelength range, 1 nm spectral bandwidth',
     image: '',
@@ -95,7 +103,7 @@ export function buildRequest(overrides = {}) {
 export function buildUser(overrides = {}) {
   return {
     id: 'stu-01',
-    role: 'student',
+    role: ROLES.STUDENT,
     name: 'Maya Lin',
     title: 'Undergraduate Researcher',
     email: 'maya.lin@campus.edu',

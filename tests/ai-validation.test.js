@@ -5,13 +5,14 @@ import {
   createAiRouter,
   isValidAllocationPayload,
   validateAndSanitizeSuggestions,
-} from '../server/aiRoutes.ts';
+} from '../server/ai-routes.ts';
 import {
   loadServerCatalog,
   suggestEquipmentFallback,
-} from '../server/catalogFallback.ts';
-import { stripMarkup, withTimeout } from '../server/geminiClient.ts';
-import { checkRateLimit } from '../server/rateLimit.ts';
+} from '../server/catalog-fallback.ts';
+import { stripMarkup, withTimeout } from '../server/gemini-client.ts';
+import { checkRateLimit } from '../server/rate-limit.ts';
+import { LIMITS } from '../src/js/constants.ts';
 import {
   formatAiSourceLabel,
   validateProjectDescription,
@@ -36,14 +37,14 @@ async function startTestApp(router) {
 describe('project description length limits and client validation', () => {
   it('rejects project descriptions shorter than 10 chars, longer than 500 chars, or containing control chars', () => {
     assert.equal(validateProjectDescription('   too short ').ok, false);
-    assert.equal(validateProjectDescription('a'.repeat(501)).ok, false);
+    assert.equal(validateProjectDescription('a'.repeat(LIMITS.AI_PROJECT_MAX + 1)).ok, false);
     assert.equal(validateProjectDescription('Measure\u0007oscilloscope signal').ok, false);
 
     const exactMin = validateProjectDescription('  1234567890  ');
     assert.equal(exactMin.ok, true);
     assert.equal(exactMin.cleaned, '1234567890');
 
-    const exactMax = validateProjectDescription('a'.repeat(500));
+    const exactMax = validateProjectDescription('a'.repeat(LIMITS.AI_PROJECT_MAX));
     assert.equal(exactMax.ok, true);
     assert.equal(formatAiSourceLabel('ai'), 'Suggested by AI');
     assert.equal(formatAiSourceLabel('fallback'), 'Smart keyword match');
@@ -77,12 +78,12 @@ describe('model-output sanitizer and markup stripping', () => {
     });
 
     const sanitized = validateAndSanitizeSuggestions(payload, catalog.validItemIds);
-    assert.equal(sanitized.length, 5);
+    assert.equal(sanitized.length, LIMITS.AI_MAX_SUGGESTIONS);
     assert.deepEqual(
       sanitized.map((s) => s.itemId),
       [validIds[0], validIds[2], validIds[3], validIds[4], validIds[5]]
     );
-    assert.ok(sanitized[0].reason.length <= 119);
+    assert.ok(sanitized[0].reason.length <= LIMITS.AI_REASON_MAX);
     assert.equal(sanitized[1].reason.includes('<script>'), false);
   });
 
@@ -157,7 +158,7 @@ describe('AI endpoint validation, stubbed Gemini output, and fallback behavior',
       assert.equal(r1.status, 200);
       const b1 = await r1.json();
       assert.equal(b1.source, 'fallback');
-      assert.ok(b1.suggestions.length >= 1 && b1.suggestions.length <= 5);
+      assert.ok(b1.suggestions.length >= 1 && b1.suggestions.length <= LIMITS.AI_MAX_SUGGESTIONS);
 
       const r2 = await fetch(`${badJsonServer.baseUrl}/api/suggest-equipment`, {
         method: 'POST',
@@ -214,7 +215,7 @@ describe('AI endpoint validation, stubbed Gemini output, and fallback behavior',
       const longRes = await fetch(`${server.baseUrl}/api/suggest-equipment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '192.0.2.15' },
-        body: JSON.stringify({ project: 'x'.repeat(501) }),
+        body: JSON.stringify({ project: 'x'.repeat(LIMITS.AI_PROJECT_MAX + 1) }),
       });
       assert.equal(longRes.status, 400);
 
@@ -286,29 +287,29 @@ describe('AI endpoint validation, stubbed Gemini output, and fallback behavior',
 });
 
 describe('rate limiter sliding window', () => {
-  it('allows 10 requests within 60 seconds, blocks the 11th with retryAfterSeconds, and resets after 60 seconds', () => {
+  it('allows rate limit max requests within window, blocks the next, and resets afterward', () => {
     const ip = '198.51.100.77';
     const start = 1_700_000_000_000;
 
-    for (let i = 0; i < 10; i += 1) {
+    for (let i = 0; i < LIMITS.RATE_LIMIT_MAX_REQUESTS; i += 1) {
       const verdict = checkRateLimit(ip, start + i * 1000);
       assert.equal(verdict.allowed, true);
       assert.equal(verdict.retryAfterSeconds, 0);
     }
 
-    const eleventh = checkRateLimit(ip, start + 10_000);
-    assert.equal(eleventh.allowed, false);
-    assert.ok(eleventh.retryAfterSeconds >= 49);
+    const blocked = checkRateLimit(ip, start + LIMITS.RATE_LIMIT_MAX_REQUESTS * 1000);
+    assert.equal(blocked.allowed, false);
+    assert.ok(blocked.retryAfterSeconds >= 49);
 
-    const afterWindow = checkRateLimit(ip, start + 61_000);
+    const afterWindow = checkRateLimit(ip, start + LIMITS.RATE_LIMIT_WINDOW_MS + 1000);
     assert.equal(afterWindow.allowed, true);
   });
 
-  it('returns HTTP 429 with Retry-After header when an IP exceeds 10 API calls per minute', async () => {
+  it('returns HTTP 429 with Retry-After header when an IP exceeds rate limit per window', async () => {
     const server = await startTestApp(createAiRouter({ getGeminiClient: () => null }));
     const burstIp = '192.0.2.250';
     try {
-      for (let i = 0; i < 10; i += 1) {
+      for (let i = 0; i < LIMITS.RATE_LIMIT_MAX_REQUESTS; i += 1) {
         const res = await fetch(`${server.baseUrl}/api/suggest-equipment`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-forwarded-for': burstIp },

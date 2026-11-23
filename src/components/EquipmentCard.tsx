@@ -25,6 +25,12 @@ const STATUS_META: Record<
   Booked: { className: 'status-badge status-badge-booked', Icon: XCircle },
 };
 
+/**
+ * Renders a single campus equipment card with doodle artwork, status badge, specs, and actions.
+ *
+ * @param props - Component properties containing item data, scope labels, and action handlers.
+ * @returns Article element displaying equipment details and actions.
+ */
 export function EquipmentCard({
   item,
   departmentName,

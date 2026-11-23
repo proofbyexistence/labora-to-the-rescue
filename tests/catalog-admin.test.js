@@ -23,38 +23,46 @@ import {
   FIXED_TODAY,
   FIXED_WEDNESDAY,
 } from './helpers.js';
+import {
+  ACCESS_LEVELS,
+  AVAILABILITY_STATUSES,
+  CATALOG_LIMITS,
+  EQUIPMENT_TYPES,
+  REQUEST_STATUSES,
+  ROLES,
+} from '../src/js/constants.ts';
 
 describe('catalog-admin role guard', () => {
   it('rejects every add, edit, and delete catalog operation when role is student', () => {
     const snap = buildCatalogSnapshot();
 
-    assert.equal(addDepartment('student', { name: 'Aerospace' }, snap).ok, false);
-    assert.equal(editDepartment('student', 'dept-physics', { name: 'Applied Physics' }, snap).ok, false);
-    assert.equal(deleteDepartment('student', 'dept-physics', snap, 'cancelAffected', FIXED_TODAY).ok, false);
+    assert.equal(addDepartment(ROLES.STUDENT, { name: 'Aerospace' }, snap).ok, false);
+    assert.equal(editDepartment(ROLES.STUDENT, 'dept-physics', { name: 'Applied Physics' }, snap).ok, false);
+    assert.equal(deleteDepartment(ROLES.STUDENT, 'dept-physics', snap, 'cancelAffected', FIXED_TODAY).ok, false);
 
-    assert.equal(addLab('student', { departmentId: 'dept-physics', name: 'Optics II' }, snap).ok, false);
-    assert.equal(editLab('student', 'lab-phy-optics', { departmentId: 'dept-physics', name: 'Optics II' }, snap).ok, false);
-    assert.equal(deleteLab('student', 'lab-phy-optics', snap, 'cancelAffected', FIXED_TODAY).ok, false);
+    assert.equal(addLab(ROLES.STUDENT, { departmentId: 'dept-physics', name: 'Optics II' }, snap).ok, false);
+    assert.equal(editLab(ROLES.STUDENT, 'lab-phy-optics', { departmentId: 'dept-physics', name: 'Optics II' }, snap).ok, false);
+    assert.equal(deleteLab(ROLES.STUDENT, 'lab-phy-optics', snap, 'cancelAffected', FIXED_TODAY).ok, false);
 
     const itemInput = {
       name: 'Laser Power Meter',
       departmentId: 'dept-physics',
       labId: 'lab-phy-optics',
-      type: 'Instruments',
+      type: EQUIPMENT_TYPES[0],
       location: 'SHN-204 · Bench C',
-      status: 'Available',
-      accessLevel: 'Open',
+      status: AVAILABILITY_STATUSES[0],
+      accessLevel: ACCESS_LEVELS[0],
       specs: '1 mW to 5 W',
     };
-    assert.equal(addItem('student', itemInput, snap).ok, false);
-    assert.equal(editItem('student', 'eq-phy-01', itemInput, snap).ok, false);
-    assert.equal(deleteItem('student', 'eq-phy-01', snap, 'cancelAffected', FIXED_TODAY).ok, false);
+    assert.equal(addItem(ROLES.STUDENT, itemInput, snap).ok, false);
+    assert.equal(editItem(ROLES.STUDENT, 'eq-phy-01', itemInput, snap).ok, false);
+    assert.equal(deleteItem(ROLES.STUDENT, 'eq-phy-01', snap, 'cancelAffected', FIXED_TODAY).ok, false);
 
     assert.equal(
-      addSlots('student', { itemId: 'eq-phy-01', date: FIXED_WEDNESDAY, startTime: '09:00', endTime: '11:00' }, snap, FIXED_TODAY).ok,
+      addSlots(ROLES.STUDENT, { itemId: 'eq-phy-01', date: FIXED_WEDNESDAY, startTime: '09:00', endTime: '11:00' }, snap, FIXED_TODAY).ok,
       false
     );
-    assert.equal(deleteSlot('student', 'sl-001', snap, 'cancelAffected', FIXED_TODAY).ok, false);
+    assert.equal(deleteSlot(ROLES.STUDENT, 'sl-001', snap, 'cancelAffected', FIXED_TODAY).ok, false);
   });
 });
 
@@ -62,16 +70,23 @@ describe('catalog-admin CRUD, trimming, length limits, and duplicates', () => {
   it('adds and edits departments while trimming whitespace and rejecting duplicates and oversized fields', () => {
     const snap = buildCatalogSnapshot();
 
-    const dup = addDepartment('faculty', { name: '  physics  ' }, snap);
+    const dup = addDepartment(ROLES.FACULTY, { name: '  physics  ' }, snap);
     assert.equal(dup.ok, false);
 
-    const tooLong = addDepartment('faculty', { name: 'A'.repeat(51), summary: 'S'.repeat(201) }, snap);
+    const tooLong = addDepartment(
+      ROLES.FACULTY,
+      {
+        name: 'A'.repeat(CATALOG_LIMITS.DEPT_NAME_MAX + 1),
+        summary: 'S'.repeat(CATALOG_LIMITS.DEPT_SUMMARY_MAX + 1),
+      },
+      snap
+    );
     assert.equal(tooLong.ok, false);
     assert.ok(tooLong.fieldErrors?.name);
     assert.ok(tooLong.fieldErrors?.summary);
 
     const added = addDepartment(
-      'faculty',
+      ROLES.FACULTY,
       {
         name: '  Aerospace   Engineering ',
         code: 'aero',
@@ -87,7 +102,7 @@ describe('catalog-admin CRUD, trimming, length limits, and duplicates', () => {
     assert.equal(added.data?.building, 'Wright Hall');
 
     const edited = editDepartment(
-      'faculty',
+      ROLES.FACULTY,
       added.data.id,
       { name: 'Aerospace Systems', code: 'AERS', building: 'Wright Hall', leadFaculty: 'Dr. N. Singh' },
       added.nextState
@@ -99,16 +114,24 @@ describe('catalog-admin CRUD, trimming, length limits, and duplicates', () => {
   it('adds and edits labs, enforces unique names per department, and keeps child items synced on department move', () => {
     const snap = buildCatalogSnapshot();
 
-    const dupLab = addLab('faculty', { departmentId: 'dept-physics', name: '  laser & optics bench ' }, snap);
+    const dupLab = addLab(ROLES.FACULTY, { departmentId: 'dept-physics', name: '  laser & optics bench ' }, snap);
     assert.equal(dupLab.ok, false);
 
-    const tooLongLab = addLab('faculty', { departmentId: 'dept-physics', name: 'L'.repeat(61), room: 'R'.repeat(25) }, snap);
+    const tooLongLab = addLab(
+      ROLES.FACULTY,
+      {
+        departmentId: 'dept-physics',
+        name: 'L'.repeat(CATALOG_LIMITS.LAB_NAME_MAX + 1),
+        room: 'R'.repeat(CATALOG_LIMITS.LAB_ROOM_MAX + 1),
+      },
+      snap
+    );
     assert.equal(tooLongLab.ok, false);
     assert.ok(tooLongLab.fieldErrors?.name);
     assert.ok(tooLongLab.fieldErrors?.room);
 
     const added = addLab(
-      'faculty',
+      ROLES.FACULTY,
       { departmentId: 'dept-physics', name: '  Photonics   Annex ', room: ' SHN-210 ' },
       snap
     );
@@ -118,7 +141,7 @@ describe('catalog-admin CRUD, trimming, length limits, and duplicates', () => {
 
     // Moving lab-phy-optics to dept-ece updates its child items' departmentId
     const moved = editLab(
-      'faculty',
+      ROLES.FACULTY,
       'lab-phy-optics',
       { departmentId: 'dept-ece', name: 'Photonics & Optics Lab', room: 'ENG-105' },
       added.nextState
@@ -132,15 +155,15 @@ describe('catalog-admin CRUD, trimming, length limits, and duplicates', () => {
     const snap = buildCatalogSnapshot();
 
     const dupItem = addItem(
-      'faculty',
+      ROLES.FACULTY,
       {
         name: '  uv-vis optical spectrometer ',
         departmentId: 'dept-physics',
         labId: 'lab-phy-optics',
-        type: 'Instruments',
+        type: EQUIPMENT_TYPES[0],
         location: 'SHN-204',
-        status: 'Available',
-        accessLevel: 'Open',
+        status: AVAILABILITY_STATUSES[0],
+        accessLevel: ACCESS_LEVELS[0],
         specs: 'Duplicate',
       },
       snap
@@ -148,16 +171,16 @@ describe('catalog-admin CRUD, trimming, length limits, and duplicates', () => {
     assert.equal(dupItem.ok, false);
 
     const badLength = addItem(
-      'faculty',
+      ROLES.FACULTY,
       {
-        name: 'X'.repeat(81),
+        name: 'X'.repeat(CATALOG_LIMITS.ITEM_NAME_MAX + 1),
         departmentId: 'dept-physics',
         labId: 'lab-phy-optics',
-        type: 'Instruments',
-        location: 'Y'.repeat(81),
-        status: 'Available',
-        accessLevel: 'Open',
-        specs: 'Z'.repeat(201),
+        type: EQUIPMENT_TYPES[0],
+        location: 'Y'.repeat(CATALOG_LIMITS.ITEM_LOCATION_MAX + 1),
+        status: AVAILABILITY_STATUSES[0],
+        accessLevel: ACCESS_LEVELS[0],
+        specs: 'Z'.repeat(CATALOG_LIMITS.ITEM_SPECS_MAX + 1),
       },
       snap
     );
@@ -167,15 +190,15 @@ describe('catalog-admin CRUD, trimming, length limits, and duplicates', () => {
     assert.ok(badLength.fieldErrors?.specs);
 
     const added = addItem(
-      'faculty',
+      ROLES.FACULTY,
       {
         name: '  Lock-In   Amplifier ',
         departmentId: 'dept-physics',
         labId: 'lab-phy-optics',
-        type: 'Instruments',
+        type: EQUIPMENT_TYPES[0],
         location: ' SHN-204 · Rack 2 ',
-        status: 'Available',
-        accessLevel: 'Open',
+        status: AVAILABILITY_STATUSES[0],
+        accessLevel: ACCESS_LEVELS[0],
         specs: '100 kHz dual-phase DSP lock-in',
       },
       snap
@@ -185,46 +208,46 @@ describe('catalog-admin CRUD, trimming, length limits, and duplicates', () => {
     assert.equal(added.data?.nextFreeSlot, 'Unscheduled');
 
     const edited = editItem(
-      'faculty',
+      ROLES.FACULTY,
       added.data.id,
       {
         name: 'Lock-In Amplifier SR830',
         departmentId: 'dept-physics',
         labId: 'lab-phy-optics',
-        type: 'Instruments',
+        type: EQUIPMENT_TYPES[0],
         location: 'SHN-204 · Rack 3',
-        status: 'Limited',
-        accessLevel: 'Needs faculty approval',
+        status: AVAILABILITY_STATUSES[1],
+        accessLevel: ACCESS_LEVELS[1],
         specs: '102 kHz dual-phase DSP',
       },
       added.nextState
     );
     assert.equal(edited.ok, true);
-    assert.equal(edited.data?.accessLevel, 'Needs faculty approval');
+    assert.equal(edited.data?.accessLevel, ACCESS_LEVELS[1]);
   });
 
   it('adds 1-hour slots within Mon–Sat 09:00–17:00 and rejects past dates, Sundays, out-of-hours, and overlaps', () => {
     const snap = buildCatalogSnapshot();
 
     assert.equal(
-      addSlots('faculty', { itemId: 'eq-phy-01', date: FIXED_PAST_DATE, startTime: '09:00', endTime: '11:00' }, snap, FIXED_TODAY).ok,
+      addSlots(ROLES.FACULTY, { itemId: 'eq-phy-01', date: FIXED_PAST_DATE, startTime: '09:00', endTime: '11:00' }, snap, FIXED_TODAY).ok,
       false
     );
     assert.equal(
-      addSlots('faculty', { itemId: 'eq-phy-01', date: FIXED_SUNDAY, startTime: '09:00', endTime: '11:00' }, snap, FIXED_TODAY).ok,
+      addSlots(ROLES.FACULTY, { itemId: 'eq-phy-01', date: FIXED_SUNDAY, startTime: '09:00', endTime: '11:00' }, snap, FIXED_TODAY).ok,
       false
     );
     assert.equal(
-      addSlots('faculty', { itemId: 'eq-phy-01', date: FIXED_WEDNESDAY, startTime: '08:00', endTime: '10:00' }, snap, FIXED_TODAY).ok,
+      addSlots(ROLES.FACULTY, { itemId: 'eq-phy-01', date: FIXED_WEDNESDAY, startTime: '08:00', endTime: '10:00' }, snap, FIXED_TODAY).ok,
       false
     );
     assert.equal(
-      addSlots('faculty', { itemId: 'eq-phy-01', date: FIXED_WEDNESDAY, startTime: '15:00', endTime: '18:00' }, snap, FIXED_TODAY).ok,
+      addSlots(ROLES.FACULTY, { itemId: 'eq-phy-01', date: FIXED_WEDNESDAY, startTime: '15:00', endTime: '18:00' }, snap, FIXED_TODAY).ok,
       false
     );
 
     const added = addSlots(
-      'faculty',
+      ROLES.FACULTY,
       { itemId: 'eq-phy-01', date: FIXED_WEDNESDAY, startTime: '09:00', endTime: '12:00' },
       snap,
       FIXED_TODAY
@@ -233,7 +256,7 @@ describe('catalog-admin CRUD, trimming, length limits, and duplicates', () => {
     assert.equal(added.data?.length, 3);
 
     const overlapping = addSlots(
-      'faculty',
+      ROLES.FACULTY,
       { itemId: 'eq-phy-01', date: FIXED_WEDNESDAY, startTime: '10:00', endTime: '13:00' },
       added.nextState,
       FIXED_TODAY
@@ -246,8 +269,8 @@ describe('getDependents and safe deletion with cancelAffected', () => {
   it('finds child labs, child items, active bookings, and blocking requests via getDependents', () => {
     const snap = buildCatalogSnapshot({
       requests: [
-        buildRequest({ id: 'req-active', departmentId: 'dept-physics', itemId: 'eq-phy-01', itemIds: ['eq-phy-01'], status: 'Submitted' }),
-        buildRequest({ id: 'req-rejected', departmentId: 'dept-physics', itemId: 'eq-phy-01', itemIds: ['eq-phy-01'], status: 'Rejected' }),
+        buildRequest({ id: 'req-active', departmentId: 'dept-physics', itemId: 'eq-phy-01', itemIds: ['eq-phy-01'], status: REQUEST_STATUSES[0] }),
+        buildRequest({ id: 'req-rejected', departmentId: 'dept-physics', itemId: 'eq-phy-01', itemIds: ['eq-phy-01'], status: REQUEST_STATUSES[3] }),
       ],
     });
 
@@ -265,18 +288,18 @@ describe('getDependents and safe deletion with cancelAffected', () => {
   it('blocks deleting a department with dependents unless cancelAffected is given, leaving zero orphaned bookings or requests', () => {
     const snap = buildCatalogSnapshot({
       requests: [
-        buildRequest({ id: 'req-dep-1', departmentId: 'dept-physics', itemId: 'eq-phy-01', itemIds: ['eq-phy-01'], status: 'Approved' }),
+        buildRequest({ id: 'req-dep-1', departmentId: 'dept-physics', itemId: 'eq-phy-01', itemIds: ['eq-phy-01'], status: REQUEST_STATUSES[2] }),
       ],
     });
 
-    const blocked = deleteDepartment('faculty', 'dept-physics', snap, undefined, FIXED_TODAY);
+    const blocked = deleteDepartment(ROLES.FACULTY, 'dept-physics', snap, undefined, FIXED_TODAY);
     assert.equal(blocked.ok, false);
     assert.ok((blocked.dependents?.totalCount ?? 0) > 0);
 
-    const canceled = deleteDepartment('faculty', 'dept-physics', snap, 'cancel', FIXED_TODAY);
+    const canceled = deleteDepartment(ROLES.FACULTY, 'dept-physics', snap, 'cancel', FIXED_TODAY);
     assert.equal(canceled.ok, false);
 
-    const forced = deleteDepartment('faculty', 'dept-physics', snap, 'cancelAffected', FIXED_TODAY);
+    const forced = deleteDepartment(ROLES.FACULTY, 'dept-physics', snap, 'cancelAffected', FIXED_TODAY);
     assert.equal(forced.ok, true);
     const next = forced.nextState;
 
@@ -286,7 +309,7 @@ describe('getDependents and safe deletion with cancelAffected', () => {
     assert.equal(next.slots.some((s) => s.itemId === 'eq-phy-01' || s.itemId === 'eq-phy-02'), false);
 
     const updatedReq = next.requests.find((r) => r.id === 'req-dep-1');
-    assert.equal(updatedReq?.status, 'Changes requested');
+    assert.equal(updatedReq?.status, REQUEST_STATUSES[4]);
     assert.equal(updatedReq?.departmentId, '');
     assert.equal(updatedReq?.itemId, '');
     assert.deepEqual(updatedReq?.itemIds, []);
@@ -295,24 +318,24 @@ describe('getDependents and safe deletion with cancelAffected', () => {
   it('blocks deleting a lab or item with dependents unless cancelAffected is given and cleans up slots and requests', () => {
     const snap = buildCatalogSnapshot({
       requests: [
-        buildRequest({ id: 'req-lab', departmentId: 'dept-physics', itemId: 'eq-phy-01', itemIds: ['eq-phy-01'], status: 'Under review' }),
+        buildRequest({ id: 'req-lab', departmentId: 'dept-physics', itemId: 'eq-phy-01', itemIds: ['eq-phy-01'], status: REQUEST_STATUSES[1] }),
       ],
     });
 
-    assert.equal(deleteLab('faculty', 'lab-phy-optics', snap, undefined, FIXED_TODAY).ok, false);
-    const labDeleted = deleteLab('faculty', 'lab-phy-optics', snap, 'cancelAffected', FIXED_TODAY);
+    assert.equal(deleteLab(ROLES.FACULTY, 'lab-phy-optics', snap, undefined, FIXED_TODAY).ok, false);
+    const labDeleted = deleteLab(ROLES.FACULTY, 'lab-phy-optics', snap, 'cancelAffected', FIXED_TODAY);
     assert.equal(labDeleted.ok, true);
     assert.equal(labDeleted.nextState.items.some((i) => i.labId === 'lab-phy-optics'), false);
     assert.equal(labDeleted.nextState.slots.some((s) => s.itemId === 'eq-phy-01'), false);
-    assert.equal(labDeleted.nextState.requests[0].status, 'Changes requested');
+    assert.equal(labDeleted.nextState.requests[0].status, REQUEST_STATUSES[4]);
     assert.equal(labDeleted.nextState.requests[0].itemId, '');
 
-    assert.equal(deleteItem('faculty', 'eq-phy-01', snap, undefined, FIXED_TODAY).ok, false);
-    const itemDeleted = deleteItem('faculty', 'eq-phy-01', snap, 'cancelAffected', FIXED_TODAY);
+    assert.equal(deleteItem(ROLES.FACULTY, 'eq-phy-01', snap, undefined, FIXED_TODAY).ok, false);
+    const itemDeleted = deleteItem(ROLES.FACULTY, 'eq-phy-01', snap, 'cancelAffected', FIXED_TODAY);
     assert.equal(itemDeleted.ok, true);
     assert.equal(itemDeleted.nextState.items.some((i) => i.id === 'eq-phy-01'), false);
     assert.equal(itemDeleted.nextState.slots.some((s) => s.itemId === 'eq-phy-01'), false);
-    assert.equal(itemDeleted.nextState.requests[0].status, 'Changes requested');
+    assert.equal(itemDeleted.nextState.requests[0].status, REQUEST_STATUSES[4]);
     assert.equal(itemDeleted.nextState.requests[0].itemId, '');
   });
 
@@ -322,7 +345,7 @@ describe('getDependents and safe deletion with cancelAffected', () => {
       departmentId: 'dept-physics',
       itemId: 'eq-phy-01',
       itemIds: ['eq-phy-01'],
-      status: 'Approved',
+      status: REQUEST_STATUSES[2],
     });
     const bookedSlot = buildSlot({
       id: 'sl-booked-linked',
@@ -337,19 +360,19 @@ describe('getDependents and safe deletion with cancelAffected', () => {
       requests: [linkedReq],
     });
 
-    const freeDeleted = deleteSlot('faculty', 'sl-free', snap, undefined, FIXED_TODAY);
+    const freeDeleted = deleteSlot(ROLES.FACULTY, 'sl-free', snap, undefined, FIXED_TODAY);
     assert.equal(freeDeleted.ok, true);
     assert.equal(freeDeleted.nextState.slots.some((s) => s.id === 'sl-free'), false);
 
-    const bookedBlocked = deleteSlot('faculty', 'sl-booked-linked', snap, undefined, FIXED_TODAY);
+    const bookedBlocked = deleteSlot(ROLES.FACULTY, 'sl-booked-linked', snap, undefined, FIXED_TODAY);
     assert.equal(bookedBlocked.ok, false);
     assert.equal(bookedBlocked.dependents?.activeBookings.length, 1);
 
-    const bookedForced = deleteSlot('faculty', 'sl-booked-linked', snap, 'cancelAffected', FIXED_TODAY);
+    const bookedForced = deleteSlot(ROLES.FACULTY, 'sl-booked-linked', snap, 'cancelAffected', FIXED_TODAY);
     assert.equal(bookedForced.ok, true);
     assert.equal(bookedForced.nextState.slots.some((s) => s.id === 'sl-booked-linked'), false);
     const updatedReq = bookedForced.nextState.requests.find((r) => r.id === 'req-slot-linked');
-    assert.equal(updatedReq?.status, 'Changes requested');
+    assert.equal(updatedReq?.status, REQUEST_STATUSES[4]);
     assert.equal(updatedReq?.reviewedAt, FIXED_TODAY);
   });
 });

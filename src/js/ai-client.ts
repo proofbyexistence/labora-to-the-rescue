@@ -1,6 +1,7 @@
 /**
  * Client-side validation and fetch wrappers for server-proxied Gemini AI routes.
  */
+import { LIMITS } from './constants';
 import type { AllocationResult } from './scheduler';
 import { hasControlChars, normalizeText } from './validation';
 
@@ -21,6 +22,12 @@ export interface ExplainAllocationResponse {
   source: AiSource;
 }
 
+/**
+ * Validates and normalizes a student project description before sending it to the suggestion API.
+ *
+ * @param raw - Raw project description entered by the user.
+ * @returns Validation status, normalized text, and optional error message.
+ */
 export function validateProjectDescription(raw: string): {
   ok: boolean;
   cleaned: string;
@@ -34,20 +41,33 @@ export function validateProjectDescription(raw: string): {
     };
   }
   const cleaned = normalizeText(raw);
-  if (cleaned.length < 10 || cleaned.length > 500) {
+  if (cleaned.length < LIMITS.AI_PROJECT_MIN || cleaned.length > LIMITS.AI_PROJECT_MAX) {
     return {
       ok: false,
       cleaned,
-      error: 'Describe your project in 10 to 500 characters.',
+      error: `Describe your project in ${LIMITS.AI_PROJECT_MIN} to ${LIMITS.AI_PROJECT_MAX} characters.`,
     };
   }
   return { ok: true, cleaned };
 }
 
+/**
+ * Maps an AI response source tag to its user-facing badge label.
+ *
+ * @param source - Origin returned by the backend (`'ai'` or `'fallback'`).
+ * @returns Display badge text.
+ */
 export function formatAiSourceLabel(source: AiSource): string {
   return source === 'ai' ? 'Suggested by AI' : 'Smart keyword match';
 }
 
+/**
+ * Requests equipment recommendations for a project description from `/api/suggest-equipment`.
+ *
+ * @param projectText - Student project summary (10–500 characters).
+ * @returns Validated equipment suggestions and response source badge.
+ * @throws Error if validation fails or the server returns an error status.
+ */
 export async function suggestEquipment(
   projectText: string
 ): Promise<SuggestEquipmentResponse> {
@@ -89,6 +109,13 @@ export async function suggestEquipment(
   };
 }
 
+/**
+ * Requests a plain-language summary of a deterministic allocation decision from `/api/explain-allocation`.
+ *
+ * @param allocation - Deterministic conflict allocation output.
+ * @returns Plain-language explanation text and source badge.
+ * @throws Error if the service cannot be reached or returns an invalid payload.
+ */
 export async function explainAllocationWithAI(
   allocation: AllocationResult
 ): Promise<ExplainAllocationResponse> {

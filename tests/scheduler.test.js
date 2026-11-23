@@ -23,6 +23,14 @@ import {
   FIXED_TUESDAY,
   FIXED_WEDNESDAY,
 } from './helpers.js';
+import {
+  ACCESS_LEVELS,
+  AVAILABILITY_STATUSES,
+  EQUIPMENT_TYPES,
+  LAB_SCHEDULE,
+  REQUEST_STATUSES,
+  ROLES,
+} from '../src/js/constants.ts';
 
 describe('validateBooking rules and overlap checks', () => {
   const existingSlots = [
@@ -102,14 +110,26 @@ describe('validateBooking rules and overlap checks', () => {
     assert.ok(res.errors.some((e) => e.toLowerCase().includes('overlaps')));
   });
 
-  it('rejects durations over 4 hours or less than 1 hour', () => {
+  it('rejects durations over max or less than min hours', () => {
     const overFour = validateBooking(
-      { itemId: 'eq-phy-01', date: FIXED_WEDNESDAY, start: '09:00', durationHours: 5, purpose: 'Long run' },
+      {
+        itemId: 'eq-phy-01',
+        date: FIXED_WEDNESDAY,
+        start: '09:00',
+        durationHours: LAB_SCHEDULE.MAX_BOOKING_HOURS + 1,
+        purpose: 'Long run',
+      },
       existingSlots,
       FIXED_TODAY
     );
     const zeroHours = validateBooking(
-      { itemId: 'eq-phy-01', date: FIXED_WEDNESDAY, start: '09:00', durationHours: 0, purpose: 'Zero run' },
+      {
+        itemId: 'eq-phy-01',
+        date: FIXED_WEDNESDAY,
+        start: '09:00',
+        durationHours: LAB_SCHEDULE.MIN_BOOKING_HOURS - 1,
+        purpose: 'Zero run',
+      },
       existingSlots,
       FIXED_TODAY
     );
@@ -129,7 +149,13 @@ describe('validateBooking rules and overlap checks', () => {
 
   it('accepts a valid Mon–Sat booking within 09:00–17:00 without overlaps', () => {
     const saturdayOk = validateBooking(
-      { itemId: 'eq-phy-01', date: FIXED_SATURDAY, start: '13:00', durationHours: 4, purpose: 'UV transmittance sweep' },
+      {
+        itemId: 'eq-phy-01',
+        date: FIXED_SATURDAY,
+        start: '13:00',
+        durationHours: LAB_SCHEDULE.MAX_BOOKING_HOURS,
+        purpose: 'UV transmittance sweep',
+      },
       existingSlots,
       FIXED_TODAY
     );
@@ -147,7 +173,7 @@ describe('validateBooking rules and overlap checks', () => {
     const dates = buildWeekDates(FIXED_TODAY);
     assert.deepEqual(dates, ['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27', '2026-11-28']);
     const grid = buildWeeklyHourlySlots('eq-phy-01', existingSlots, FIXED_TODAY);
-    assert.equal(grid.length, 48);
+    assert.equal(grid.length, LAB_SCHEDULE.WEEK_SLOT_COUNT);
     assert.equal(grid.filter((s) => s.status === 'booked').length, 2);
   });
 });
@@ -157,7 +183,7 @@ describe('detectConflicts', () => {
     const r1 = buildRequest({
       id: 'req-a',
       itemId: 'eq-phy-01',
-      status: 'Submitted',
+      status: REQUEST_STATUSES[0],
       preferredDate: FIXED_TUESDAY,
       preferredStart: '10:00',
       preferredDurationHours: 2,
@@ -167,7 +193,7 @@ describe('detectConflicts', () => {
       student: 'Alex Rivera',
       studentId: 'stu-02',
       itemId: 'eq-phy-01',
-      status: 'Under review',
+      status: REQUEST_STATUSES[1],
       preferredDate: FIXED_TUESDAY,
       preferredStart: '11:00',
       preferredDurationHours: 2,
@@ -182,11 +208,11 @@ describe('detectConflicts', () => {
 
   it('ignores non-overlapping slots, different items/dates, and already-decided requests', () => {
     const requests = [
-      buildRequest({ id: 'req-1', itemId: 'eq-phy-01', preferredDate: FIXED_TUESDAY, preferredStart: '09:00', preferredDurationHours: 2, status: 'Submitted' }),
-      buildRequest({ id: 'req-2', itemId: 'eq-phy-01', preferredDate: FIXED_TUESDAY, preferredStart: '11:00', preferredDurationHours: 2, status: 'Submitted' }),
-      buildRequest({ id: 'req-3', itemId: 'eq-phy-01', preferredDate: FIXED_TUESDAY, preferredStart: '09:00', preferredDurationHours: 2, status: 'Approved' }),
-      buildRequest({ id: 'req-4', itemId: 'eq-phy-01', preferredDate: FIXED_WEDNESDAY, preferredStart: '09:00', preferredDurationHours: 2, status: 'Submitted' }),
-      buildRequest({ id: 'req-5', itemId: 'eq-phy-02', preferredDate: FIXED_TUESDAY, preferredStart: '09:00', preferredDurationHours: 2, status: 'Submitted' }),
+      buildRequest({ id: 'req-1', itemId: 'eq-phy-01', preferredDate: FIXED_TUESDAY, preferredStart: '09:00', preferredDurationHours: 2, status: REQUEST_STATUSES[0] }),
+      buildRequest({ id: 'req-2', itemId: 'eq-phy-01', preferredDate: FIXED_TUESDAY, preferredStart: '11:00', preferredDurationHours: 2, status: REQUEST_STATUSES[0] }),
+      buildRequest({ id: 'req-3', itemId: 'eq-phy-01', preferredDate: FIXED_TUESDAY, preferredStart: '09:00', preferredDurationHours: 2, status: REQUEST_STATUSES[2] }),
+      buildRequest({ id: 'req-4', itemId: 'eq-phy-01', preferredDate: FIXED_WEDNESDAY, preferredStart: '09:00', preferredDurationHours: 2, status: REQUEST_STATUSES[0] }),
+      buildRequest({ id: 'req-5', itemId: 'eq-phy-02', preferredDate: FIXED_TUESDAY, preferredStart: '09:00', preferredDurationHours: 2, status: REQUEST_STATUSES[0] }),
     ];
     assert.deepEqual(detectConflicts(requests), []);
   });
@@ -335,15 +361,15 @@ describe('allocate deterministic conflict resolution', () => {
     const primary = buildItem({
       id: 'eq-phy-01',
       name: 'UV-Vis Optical Spectrometer',
-      type: 'Instruments',
+      type: EQUIPMENT_TYPES[0],
       specs: '190-1100 nm optical spectrometer',
     });
     const similar = buildItem({
       id: 'eq-phy-alt',
       name: 'Benchtop UV Spectrometer',
-      type: 'Instruments',
+      type: EQUIPMENT_TYPES[0],
       location: 'SHN-206',
-      status: 'Available',
+      status: AVAILABILITY_STATUSES[0],
       specs: '200-1000 nm optical spectrometer',
       nextFreeSlot: '11-23 · 11:00',
     });
@@ -406,24 +432,24 @@ describe('allocate deterministic conflict resolution', () => {
 
 describe('canUserBookItem access control', () => {
   it('blocks booking of approval-required items until an approved request exists for that student', () => {
-    const approvalItem = buildItem({ id: 'eq-ece-02', accessLevel: 'Needs faculty approval' });
-    const student = buildUser({ id: 'stu-01', name: 'Maya Lin', role: 'student' });
+    const approvalItem = buildItem({ id: 'eq-ece-02', accessLevel: ACCESS_LEVELS[1] });
+    const student = buildUser({ id: 'stu-01', name: 'Maya Lin', role: ROLES.STUDENT });
 
-    const pendingReq = buildRequest({ studentId: 'stu-01', itemId: 'eq-ece-02', itemIds: ['eq-ece-02'], status: 'Submitted' });
+    const pendingReq = buildRequest({ studentId: 'stu-01', itemId: 'eq-ece-02', itemIds: ['eq-ece-02'], status: REQUEST_STATUSES[0] });
     assert.equal(canUserBookItem(approvalItem, student, [pendingReq]).allowed, false);
 
-    const otherStudentApproved = buildRequest({ studentId: 'stu-99', student: 'Other Student', itemId: 'eq-ece-02', itemIds: ['eq-ece-02'], status: 'Approved' });
+    const otherStudentApproved = buildRequest({ studentId: 'stu-99', student: 'Other Student', itemId: 'eq-ece-02', itemIds: ['eq-ece-02'], status: REQUEST_STATUSES[2] });
     assert.equal(canUserBookItem(approvalItem, student, [otherStudentApproved]).allowed, false);
 
-    const approvedReq = buildRequest({ studentId: 'stu-01', itemId: 'eq-ece-02', itemIds: ['eq-ece-02'], status: 'Approved' });
+    const approvedReq = buildRequest({ studentId: 'stu-01', itemId: 'eq-ece-02', itemIds: ['eq-ece-02'], status: REQUEST_STATUSES[2] });
     assert.equal(canUserBookItem(approvalItem, student, [approvedReq]).allowed, true);
   });
 
   it('requires confirmed training or an approved request for Training required items unless user is faculty', () => {
-    const trainingItem = buildItem({ id: 'eq-phy-02', accessLevel: 'Training required' });
-    const untrained = buildUser({ role: 'student', confirmedTrainingItemIds: [] });
-    const trained = buildUser({ role: 'student', confirmedTrainingItemIds: ['eq-phy-02'] });
-    const faculty = buildUser({ id: 'fac-01', role: 'faculty', name: 'Dr. Vance' });
+    const trainingItem = buildItem({ id: 'eq-phy-02', accessLevel: ACCESS_LEVELS[2] });
+    const untrained = buildUser({ role: ROLES.STUDENT, confirmedTrainingItemIds: [] });
+    const trained = buildUser({ role: ROLES.STUDENT, confirmedTrainingItemIds: ['eq-phy-02'] });
+    const faculty = buildUser({ id: 'fac-01', role: ROLES.FACULTY, name: 'Dr. Vance' });
 
     assert.equal(canUserBookItem(trainingItem, untrained, []).allowed, false);
     assert.equal(canUserBookItem(trainingItem, trained, []).allowed, true);

@@ -12,11 +12,11 @@ University laboratories often operate in isolated departmental silos with spread
 
 | Domain Requirement | How LABORA Solves It | Implementing File(s) |
 |---|---|---|
-| **Equipment discovery** | Searchable, multi-faceted catalog across 7 departments and 14 labs with filters for type, availability, and access level, plus AI-assisted project matching. | `src/pages/DiscoverPage.tsx`, `src/js/filter.ts`, `server/catalogFallback.ts` |
+| **Equipment discovery** | Searchable, multi-faceted catalog across 7 departments and 14 labs with filters for type, availability, and access level, plus AI-assisted project matching. | `src/pages/DiscoverPage.tsx`, `src/js/filter.ts`, `server/catalog-fallback.ts` |
 | **Intelligent slot booking** | Interactive weekly Mon–Sat (`09:00–17:00`) grid validating lab hours, Sunday closures, 1–4 hour durations, and non-overlapping slots before reserving. | `src/pages/SmartBookingPage.tsx`, `src/js/scheduler.ts` |
 | **Project-based access requests** | Validated student request workflow capturing project title, course, team size, deadline, multi-item gear, required hours, written justification, and training sign-off. | `src/pages/RequestAccessPage.tsx`, `src/js/requests.ts` |
-| **Faculty approvals** | Role-guarded review workspace with status state machine (`Submitted -> Under review -> Approved / Changes requested / Rejected`), mandatory reasons, and instant Smart Booking unlock. | `src/pages/FacultyApprovalsPage.tsx`, `src/js/requests.ts`, `src/js/labData.ts` |
-| **Conflict resolution & fair and feasible allocation** | Groups overlapping requests on the same instrument window and ranks contenders with a transparent 0–100 score weighting **deadlines** (35 pts), schedule **availability** / feasibility (25 pts), **student requirements** (20 pts), and historical usage fairness (20 pts), reassigning remaining teams to earliest open slots or similar alternatives. | `src/js/scheduler.ts`, `src/pages/SmartBookingPage.tsx`, `server/aiRoutes.ts` |
+| **Faculty approvals** | Role-guarded review workspace with status state machine (`Submitted -> Under review -> Approved / Changes requested / Rejected`), mandatory reasons, and instant Smart Booking unlock. | `src/pages/FacultyApprovalsPage.tsx`, `src/js/requests.ts`, `src/js/lab-data.ts` |
+| **Conflict resolution & fair and feasible allocation** | Groups overlapping requests on the same instrument window and ranks contenders with a transparent 0–100 score weighting **deadlines** (35 pts), schedule **availability** / feasibility (25 pts), **student requirements** (20 pts), and historical usage fairness (20 pts), reassigning remaining teams to earliest open slots or similar alternatives. | `src/js/scheduler.ts`, `src/pages/SmartBookingPage.tsx`, `server/ai-routes.ts` |
 | **Resource utilisation** | Live analytics computing booked vs. scheduled capacity percentages by lab, surfacing underused instruments, and allowing faculty catalog/slot CRUD. | `src/js/analytics.ts`, `src/pages/FacultyApprovalsPage.tsx`, `src/js/catalog-admin.ts` |
 
 ---
@@ -47,38 +47,43 @@ University laboratories often operate in isolated departmental silos with spread
 ```text
 ├── .env.example                 # Template environment variables (GEMINI_API_KEY, APP_URL)
 ├── ACCESSIBILITY.md             # WCAG 2.2 AA accessibility controls, shortcuts, and verification
+├── ARCHITECTURE.md              # Layered architecture diagram, data flow, and module responsibilities
 ├── PERFORMANCE.md               # Bundle splitting, compression, caching, and animation optimizations
 ├── SECURITY.md                  # Security headers, validation, rate limits, and AI key isolation
 ├── TESTING.md                   # Automated suite map (76+ tests) and 27-point manual test plan
 ├── index.html                   # Document shell, font preconnects, favicon, and pre-paint theme script
 ├── metadata.json                # Applet manifest metadata
-├── package.json                 # Pinned dependencies and scripts (dev, build, start, lint, test)
+├── package.json                 # Pinned dependencies and scripts (dev, build, start, lint, format, test)
 ├── server.ts                    # Express server with CSP, compression, /api mounting, and SPA serving
 ├── vite.config.ts               # Vite + React + Tailwind CSS build and manual chunk splitting
 ├── public/
 │   ├── favicon.svg              # Vector flask icon for browser tabs
 │   └── theme-init.js            # External pre-hydration light/dark theme initializer
 ├── server/
-│   ├── aiRoutes.ts              # POST /api/suggest-equipment & POST /api/explain-allocation
-│   ├── catalogFallback.ts       # Compact catalog loader & deterministic keyword fallback
-│   ├── geminiClient.ts          # Lazy server-only @google/genai wrapper, timeout & sanitizer
-│   └── rateLimit.ts             # Per-IP sliding-window rate limiter (10 requests / 60s)
+│   ├── ai-routes.ts             # POST /api/suggest-equipment & POST /api/explain-allocation
+│   ├── ai-prompts.ts            # Prompt formatting & schema declarations for Gemini API calls
+│   ├── ai-validation.ts         # API body, allocation summary, and catalog output validators
+│   ├── catalog-fallback.ts      # Compact catalog loader & deterministic keyword fallback
+│   ├── compression-middleware.ts# Streaming Brotli/Gzip response compression middleware
+│   ├── gemini-client.ts         # Lazy server-only @google/genai wrapper, timeout & sanitizer
+│   ├── rate-limit.ts            # Per-IP sliding-window rate limiter (10 requests / 60s)
+│   └── security-middleware.ts # Content-Security-Policy and API origin check middleware
 ├── src/
 │   ├── App.tsx                  # Hash/pathname router, lazy page loader, 404 view, dynamic meta tags
 │   ├── index.css                # Tailwind v4 + LABORA CSS entry point
 │   ├── main.tsx                 # Client React root bootstrap
-│   ├── components/              # Shared UI shell, EquipmentCard, ItemDetailsDialog, LabDoodles, CatalogManagePanel, DaydreamStrip
+│   ├── components/              # Shared UI shell, cards, dialogs, schedule grid, forms, and manage/ tabs
 │   ├── css/                     # Theme tokens (tokens.css), notebook rules (pages.css), daydream CSS (daydream.css)
 │   ├── data/labs.json           # Seed catalog (7 departments, 14 labs, 43 items, slots, requests, users)
-│   ├── js/                      # Pure domain modules (filter, scheduler, requests, catalog-admin, analytics, validation, ai-client, theme, types) + labData store
+│   ├── js/                      # Constants, pure domain modules, state store, hooks, and AI API client
 │   └── pages/                   # Route views (Home, Discover, SmartBooking, RequestAccess, FacultyApprovals)
 └── tests/                       # Offline Node test suite (node:test) across all pure logic, storage & API routes
 ```
 
 ### Data Flow
-1. **Hydration & Persistence**: `src/js/labData.ts` loads seed catalog records from `src/data/labs.json`, validates any stored browser state in `localStorage` (`validatePersistedState`), and debounces writes (`150 ms`) with `pagehide` / `visibilitychange` flushes.
-2. **Pure Logic Modules**: All filtering (`filter.ts`), slot validation and fair allocation (`scheduler.ts`), request transitions (`requests.ts`), role-guarded CRUD (`catalog-admin.ts`), and analytics (`analytics.ts`) run as deterministic, DOM-free pure functions.
-3. **Server AI Proxy**: UI components call `/api/*` via `src/js/ai-client.ts`; `server/aiRoutes.ts` enforces size limits, input validation, rate limits, and Gemini schema checking before falling back cleanly when needed.
+1. **Hydration & Persistence**: `src/js/lab-store.ts` loads seed catalog records from `src/data/labs.json`, validates any stored browser state in `localStorage` (`validatePersistedState` in `src/js/storage-guard.ts`), and debounces writes (`150 ms`) with `pagehide` / `visibilitychange` flushes.
+2. **Pure Logic Modules**: All filtering (`filter.ts`), slot validation and fair allocation (`scheduler*.ts`), request transitions (`requests.ts`), role-guarded CRUD (`catalog-admin*.ts`), and analytics (`analytics.ts`) run as deterministic, DOM-free pure functions.
+3. **Server AI Proxy**: UI components call `/api/*` via `src/js/ai-client.ts`; `server/ai-routes.ts` enforces size limits, input validation, rate limits, and Gemini schema checking before falling back cleanly when needed. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
@@ -101,8 +106,8 @@ University laboratories often operate in isolated departmental silos with spread
   1. `POST /api/suggest-equipment`: Matches a student's project description (`10–500` chars) against a compact JSON snapshot of the catalog (`src/data/labs.json`) and returns up to 5 catalog `itemId`s with concise reasons (`<120` chars).
   2. `POST /api/explain-allocation`: Rewrites an already-computed deterministic `AllocationResult` into 2–3 plain-language sentences for students without changing scores, dates, or slot winners.
 - **What deterministic logic decides**: All eligibility checks (`canUserBookItem`), slot validation (`validateBooking`), conflict detection (`detectConflicts`), 0–100 priority scoring (`scoreRequest`), tie-breaking, earliest-slot reassignment, and alternative equipment selection (`allocate`) are 100% deterministic in `src/js/scheduler.ts`.
-- **Key protection**: `GEMINI_API_KEY` is read strictly on the server in `server/geminiClient.ts` (`process.env.GEMINI_API_KEY`), never exposed to Vite `VITE_*` client bundles, with `5 KB` request caps, `<student_project>` / `<allocation_data>` untrusted-data framing, output markup stripping, `10s` timeouts, and per-IP rate limiting (`10 req/min`).
-- **Fallback**: Whenever `GEMINI_API_KEY` is unset, times out, fails, or returns malformed/off-catalog IDs, `server/catalogFallback.ts` (`suggestEquipmentFallback`) ranks catalog matches via `filterItems`, and `/api/explain-allocation` returns `explainAllocation()`, clearly badged in the UI (`Suggested by AI` vs. `Smart keyword match`).
+- **Key protection**: `GEMINI_API_KEY` is read strictly on the server in `server/gemini-client.ts` (`process.env.GEMINI_API_KEY`), never exposed to Vite `VITE_*` client bundles, with `5 KB` request caps, `<student_project>` / `<allocation_data>` untrusted-data framing, output markup stripping, `10s` timeouts, and per-IP rate limiting (`10 req/min`).
+- **Fallback**: Whenever `GEMINI_API_KEY` is unset, times out, fails, or returns malformed/off-catalog IDs, `server/catalog-fallback.ts` (`suggestEquipmentFallback`) ranks catalog matches via `filterItems`, and `/api/explain-allocation` returns `explainAllocation()`, clearly badged in the UI (`Suggested by AI` vs. `Smart keyword match`).
 
 ---
 

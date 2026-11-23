@@ -1,15 +1,9 @@
 /**
  * Accessible focus-trapped equipment specification modal with booking and access shortcuts.
  */
-import { useEffect, useRef } from 'react';
-import {
-  AlertTriangle,
-  CalendarClock,
-  CheckCircle2,
-  ShieldCheck,
-  X,
-  XCircle,
-} from 'lucide-react';
+import { useRef } from 'react';
+import { AlertTriangle, CalendarClock, CheckCircle2, ShieldCheck, X, XCircle } from 'lucide-react';
+import { useDialogFocusTrap } from '../js/dialog-focus-trap';
 import type { Department, EquipmentItem, Lab } from '../js/types';
 import { EquipmentDoodle } from './LabDoodles';
 
@@ -22,15 +16,18 @@ interface ItemDetailsDialogProps {
   onRequestAccess: (itemId: string) => void;
 }
 
-const STATUS_META: Record<
-  EquipmentItem['status'],
-  { className: string; Icon: typeof CheckCircle2 }
-> = {
+const STATUS_META: Record<EquipmentItem['status'], { className: string; Icon: typeof CheckCircle2 }> = {
   Available: { className: 'status-badge status-badge-available', Icon: CheckCircle2 },
   Limited: { className: 'status-badge status-badge-limited', Icon: AlertTriangle },
   Booked: { className: 'status-badge status-badge-booked', Icon: XCircle },
 };
 
+/**
+ * Renders an accessible modal displaying full specifications, lab hours, and action buttons for an item.
+ *
+ * @param props - Active item, optional department/lab context, and modal callbacks.
+ * @returns Modal dialog tree or null when closed.
+ */
 export function ItemDetailsDialog({
   item,
   department,
@@ -40,48 +37,9 @@ export function ItemDetailsDialog({
   onRequestAccess,
 }: ItemDetailsDialogProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
-  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  useDialogFocusTrap(Boolean(item), dialogRef, onClose);
 
-  useEffect(() => {
-    if (!item) return;
-
-    // Move keyboard focus into the dialog, trap Tab cycling, and close cleanly on Escape.
-    window.requestAnimationFrame(() => {
-      closeButtonRef.current?.focus();
-    });
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-
-      if (event.key === 'Tab' && dialogRef.current) {
-        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusables.length === 0) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [item, onClose]);
-
-  if (!item) {
-    return null;
-  }
-
+  if (!item) return null;
   const statusMeta = STATUS_META[item.status];
   const StatusIcon = statusMeta.Icon;
 
@@ -89,9 +47,7 @@ export function ItemDetailsDialog({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--backdrop)] p-4"
       onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
@@ -105,27 +61,18 @@ export function ItemDetailsDialog({
         <div className="flex items-start justify-between gap-4 border-b-2 border-[var(--ink)] pb-4">
           <div className="flex items-center gap-4">
             <div className="rounded-[10px] border-2 border-[var(--ink)] bg-[var(--paper)] p-2">
-              <EquipmentDoodle
-                type={item.type}
-                departmentId={item.departmentId}
-                className="h-14 w-14 shrink-0"
-              />
+              <EquipmentDoodle type={item.type} departmentId={item.departmentId} className="h-14 w-14 shrink-0" />
             </div>
             <div>
               <div className="text-sm font-bold text-[var(--ink)]">
                 {item.id} · {item.type}
               </div>
-              <h2
-                id="item-details-title"
-                className="text-3xl font-bold leading-tight text-[var(--ink)]"
-              >
+              <h2 id="item-details-title" className="text-3xl font-bold leading-tight text-[var(--ink)]">
                 {item.name}
               </h2>
             </div>
           </div>
-
           <button
-            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             className="labora-btn labora-btn-paper !px-3"
@@ -162,9 +109,7 @@ export function ItemDetailsDialog({
           </div>
           <div>
             <dt className="text-sm font-bold text-[var(--ink)]">Laboratory</dt>
-            <dd className="text-[var(--ink)]">
-              {lab ? `${lab.name} (${lab.room})` : item.labId}
-            </dd>
+            <dd className="text-[var(--ink)]">{lab ? `${lab.name} (${lab.room})` : item.labId}</dd>
           </div>
           <div>
             <dt className="text-sm font-bold text-[var(--ink)]">Bench Location</dt>
@@ -200,7 +145,6 @@ export function ItemDetailsDialog({
             <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
             Request Access
           </button>
-
           <button
             type="button"
             onClick={() => {

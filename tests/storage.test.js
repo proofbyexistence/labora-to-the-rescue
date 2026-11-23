@@ -12,7 +12,8 @@ import {
   resetLabStore,
   switchUserRole,
   validatePersistedState,
-} from '../src/js/labData.ts';
+} from '../src/js/lab-data.ts';
+import { LIMITS, ROLES, STORAGE_KEYS } from '../src/js/constants.ts';
 import {
   applyTheme,
   getInitialTheme,
@@ -21,7 +22,7 @@ import {
 } from '../src/js/theme.ts';
 import { createMemoryStorage, createThrowingStorage } from './helpers.js';
 
-const STORAGE_KEY = 'labora_notebook_state_v1';
+const STORAGE_KEY = STORAGE_KEYS.NOTEBOOK_STATE;
 
 const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
 const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
@@ -55,12 +56,12 @@ describe('validatePersistedState schema guard', () => {
       requests: getRequests().map((r, idx) =>
         idx === 0 ? { ...r, status: 'Pending' } : r
       ),
-      activeRole: 'faculty',
+      activeRole: ROLES.FACULTY,
     };
 
     const result = validatePersistedState(valid);
     assert.ok(result);
-    assert.equal(result.activeRole, 'faculty');
+    assert.equal(result.activeRole, ROLES.FACULTY);
     assert.equal(result.requests[0].status, 'Submitted');
   });
 
@@ -72,7 +73,7 @@ describe('validatePersistedState schema guard', () => {
       items: getItems(),
       slots: getAllSlots(),
       requests: getRequests(),
-      activeRole: 'student',
+      activeRole: ROLES.STUDENT,
     };
 
     assert.equal(validatePersistedState(null), null);
@@ -116,7 +117,7 @@ describe('labData storage hydration and fallback', () => {
     const status = reloadLabStore(storage);
 
     assert.equal(status.loadedFromStorage, false);
-    assert.equal(status.activeRole, 'student');
+    assert.equal(status.activeRole, ROLES.STUDENT);
     assert.equal(storage.getItem(STORAGE_KEY), null);
     assert.equal(getDepartments().length, 7);
     assert.equal(getItems().length, 43);
@@ -137,9 +138,11 @@ describe('labData storage hydration and fallback', () => {
     const status = reloadLabStore(storage);
     assert.equal(status.loadedFromStorage, false);
     assert.equal(storage.getItem(STORAGE_KEY), null);
-    assert.equal(getCurrentUser().role, 'student');
+    assert.equal(getCurrentUser().role, ROLES.STUDENT);
 
-    const oversized = createMemoryStorage({ [STORAGE_KEY]: 'x'.repeat(500_001) });
+    const oversized = createMemoryStorage({
+      [STORAGE_KEY]: 'x'.repeat(LIMITS.STORAGE_MAX_BYTES + 1),
+    });
     const bigStatus = reloadLabStore(oversized);
     assert.equal(bigStatus.loadedFromStorage, false);
     assert.equal(oversized.getItem(STORAGE_KEY), null);
@@ -147,17 +150,17 @@ describe('labData storage hydration and fallback', () => {
 
   it('hydrates valid persisted state cleanly from storage', () => {
     resetLabStore();
-    switchUserRole('faculty');
+    switchUserRole(ROLES.FACULTY);
     const storage = createMemoryStorage();
     flushPersistedState(storage);
 
-    switchUserRole('student');
-    assert.equal(getCurrentUser().role, 'student');
+    switchUserRole(ROLES.STUDENT);
+    assert.equal(getCurrentUser().role, ROLES.STUDENT);
 
     const status = reloadLabStore(storage);
     assert.equal(status.loadedFromStorage, true);
-    assert.equal(status.activeRole, 'faculty');
-    assert.equal(getCurrentUser().role, 'faculty');
+    assert.equal(status.activeRole, ROLES.FACULTY);
+    assert.equal(getCurrentUser().role, ROLES.FACULTY);
   });
 
   it('falls back to in-memory state without throwing when storage access throws', () => {
@@ -167,10 +170,10 @@ describe('labData storage hydration and fallback', () => {
     assert.equal(status.loadedFromStorage, false);
     assert.equal(getDepartments().length, 7);
 
-    const switched = switchUserRole('faculty');
-    assert.equal(switched.role, 'faculty');
+    const switched = switchUserRole(ROLES.FACULTY);
+    assert.equal(switched.role, ROLES.FACULTY);
     flushPersistedState(blocked);
-    assert.equal(getCurrentUser().role, 'faculty');
+    assert.equal(getCurrentUser().role, ROLES.FACULTY);
   });
 });
 

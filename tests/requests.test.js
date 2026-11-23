@@ -17,6 +17,12 @@ import {
   FIXED_PAST_DATE,
   FIXED_TODAY,
 } from './helpers.js';
+import {
+  ACCESS_LEVELS,
+  LIMITS,
+  REQUEST_STATUSES,
+  ROLES,
+} from '../src/js/constants.ts';
 
 function createRequestContext() {
   const departments = [
@@ -24,9 +30,9 @@ function createRequestContext() {
     buildDepartment({ id: 'dept-ece', name: 'Electronics & ECE' }),
   ];
   const items = [
-    buildItem({ id: 'eq-open', accessLevel: 'Open' }),
-    buildItem({ id: 'eq-approval', accessLevel: 'Needs faculty approval' }),
-    buildItem({ id: 'eq-training', accessLevel: 'Training required' }),
+    buildItem({ id: 'eq-open', accessLevel: ACCESS_LEVELS[0] }),
+    buildItem({ id: 'eq-approval', accessLevel: ACCESS_LEVELS[1] }),
+    buildItem({ id: 'eq-training', accessLevel: ACCESS_LEVELS[2] }),
   ];
   return { departments, items, referenceDate: FIXED_TODAY };
 }
@@ -73,14 +79,14 @@ describe('validateRequest field validation', () => {
 
     const tooLong = validateRequest(
       {
-        project: 'x'.repeat(81),
-        subjectCourse: 'y'.repeat(81),
+        project: 'x'.repeat(LIMITS.PROJECT_MAX + 1),
+        subjectCourse: 'y'.repeat(LIMITS.SUBJECT_MAX + 1),
         departmentId: 'dept-physics',
         teamSize: 2,
         deadline: FIXED_FUTURE_DEADLINE,
         itemIds: ['eq-open'],
         hoursNeeded: 4,
-        justification: 'z'.repeat(501),
+        justification: 'z'.repeat(LIMITS.JUSTIFICATION_MAX + 1),
       },
       ctx
     );
@@ -149,10 +155,10 @@ describe('validateRequest field validation', () => {
         project: 'Unknown Item Test',
         subjectCourse: 'PHYS 310',
         departmentId: 'dept-unknown',
-        teamSize: 11,
+        teamSize: LIMITS.TEAM_MAX + 1,
         deadline: FIXED_FUTURE_DEADLINE,
         itemIds: ['eq-missing'],
-        hoursNeeded: 101,
+        hoursNeeded: LIMITS.HOURS_NEEDED_MAX + 1,
         justification: 'Short',
       },
       ctx
@@ -227,50 +233,74 @@ describe('validateRequest field validation', () => {
 
 describe('transitionRequest state machine and booking unlock', () => {
   it('follows valid status transitions from Submitted through Under review to Approved or Changes requested and resubmission', () => {
-    const initial = buildRequest({ status: 'Submitted' });
+    const initial = buildRequest({ status: REQUEST_STATUSES[0] });
 
-    const inReview = transitionRequest(initial, 'Under review', '', FIXED_TODAY, 'faculty');
+    const inReview = transitionRequest(initial, REQUEST_STATUSES[1], '', FIXED_TODAY, ROLES.FACULTY);
     assert.equal(inReview.ok, true);
-    assert.equal(inReview.request.status, 'Under review');
+    assert.equal(inReview.request.status, REQUEST_STATUSES[1]);
     assert.equal(inReview.request.reviewedAt, FIXED_TODAY);
 
-    const changes = transitionRequest(inReview.request, 'Changes requested', 'Clarify sample prep steps.', FIXED_TODAY, 'faculty');
+    const changes = transitionRequest(
+      inReview.request,
+      REQUEST_STATUSES[4],
+      'Clarify sample prep steps.',
+      FIXED_TODAY,
+      ROLES.FACULTY
+    );
     assert.equal(changes.ok, true);
-    assert.equal(changes.request.status, 'Changes requested');
+    assert.equal(changes.request.status, REQUEST_STATUSES[4]);
 
-    const resubmitted = transitionRequest(changes.request, 'Submitted', '', FIXED_TODAY, 'student');
+    const resubmitted = transitionRequest(changes.request, REQUEST_STATUSES[0], '', FIXED_TODAY, ROLES.STUDENT);
     assert.equal(resubmitted.ok, true);
-    assert.equal(resubmitted.request.status, 'Submitted');
+    assert.equal(resubmitted.request.status, REQUEST_STATUSES[0]);
 
-    const reviewAgain = transitionRequest(resubmitted.request, 'Under review', '', FIXED_TODAY, 'faculty');
-    const approved = transitionRequest(reviewAgain.request, 'Approved', 'Cleared for Tuesday bench.', FIXED_TODAY, 'faculty');
+    const reviewAgain = transitionRequest(resubmitted.request, REQUEST_STATUSES[1], '', FIXED_TODAY, ROLES.FACULTY);
+    const approved = transitionRequest(
+      reviewAgain.request,
+      REQUEST_STATUSES[2],
+      'Cleared for Tuesday bench.',
+      FIXED_TODAY,
+      ROLES.FACULTY
+    );
     assert.equal(approved.ok, true);
-    assert.equal(approved.request.status, 'Approved');
+    assert.equal(approved.request.status, REQUEST_STATUSES[2]);
   });
 
   it('rejects invalid transitions, terminal transitions, and non-faculty review decisions', () => {
-    const submitted = buildRequest({ status: 'Submitted' });
-    const skipToApproved = transitionRequest(submitted, 'Approved', 'Skipping', FIXED_TODAY, 'faculty');
+    const submitted = buildRequest({ status: REQUEST_STATUSES[0] });
+    const skipToApproved = transitionRequest(submitted, REQUEST_STATUSES[2], 'Skipping', FIXED_TODAY, ROLES.FACULTY);
     assert.equal(skipToApproved.ok, false);
-    assert.equal(skipToApproved.request.status, 'Submitted');
+    assert.equal(skipToApproved.request.status, REQUEST_STATUSES[0]);
 
-    const studentAttempt = transitionRequest(submitted, 'Under review', '', FIXED_TODAY, 'student');
+    const studentAttempt = transitionRequest(submitted, REQUEST_STATUSES[1], '', FIXED_TODAY, ROLES.STUDENT);
     assert.equal(studentAttempt.ok, false);
 
-    const underReview = transitionRequest(submitted, 'Under review', '', FIXED_TODAY, 'faculty').request;
-    const rejected = transitionRequest(underReview, 'Rejected', 'Lab undergoing maintenance.', FIXED_TODAY, 'faculty');
+    const underReview = transitionRequest(submitted, REQUEST_STATUSES[1], '', FIXED_TODAY, ROLES.FACULTY).request;
+    const rejected = transitionRequest(
+      underReview,
+      REQUEST_STATUSES[3],
+      'Lab undergoing maintenance.',
+      FIXED_TODAY,
+      ROLES.FACULTY
+    );
     assert.equal(rejected.ok, true);
 
-    const reopenRejected = transitionRequest(rejected.request, 'Submitted', '', FIXED_TODAY, 'faculty');
+    const reopenRejected = transitionRequest(rejected.request, REQUEST_STATUSES[0], '', FIXED_TODAY, ROLES.FACULTY);
     assert.equal(reopenRejected.ok, false);
   });
 
-  it('requires a 3–300 char reason for Rejected and Changes requested decisions', () => {
-    const underReview = buildRequest({ status: 'Under review' });
+  it('requires a valid reason for Rejected and Changes requested decisions', () => {
+    const underReview = buildRequest({ status: REQUEST_STATUSES[1] });
 
-    const shortReject = transitionRequest(underReview, 'Rejected', 'no', FIXED_TODAY, 'faculty');
-    const blankChanges = transitionRequest(underReview, 'Changes requested', '   ', FIXED_TODAY, 'faculty');
-    const longReject = transitionRequest(underReview, 'Rejected', 'r'.repeat(301), FIXED_TODAY, 'faculty');
+    const shortReject = transitionRequest(underReview, REQUEST_STATUSES[3], 'no', FIXED_TODAY, ROLES.FACULTY);
+    const blankChanges = transitionRequest(underReview, REQUEST_STATUSES[4], '   ', FIXED_TODAY, ROLES.FACULTY);
+    const longReject = transitionRequest(
+      underReview,
+      REQUEST_STATUSES[3],
+      'r'.repeat(LIMITS.REASON_MAX + 1),
+      FIXED_TODAY,
+      ROLES.FACULTY
+    );
 
     assert.equal(shortReject.ok, false);
     assert.equal(blankChanges.ok, false);
@@ -278,19 +308,25 @@ describe('transitionRequest state machine and booking unlock', () => {
   });
 
   it('unlocks Smart Booking for restricted equipment once the request transitions to Approved', () => {
-    const restrictedItem = buildItem({ id: 'eq-approval', accessLevel: 'Needs faculty approval' });
-    const student = buildUser({ id: 'stu-01', name: 'Maya Lin', role: 'student' });
+    const restrictedItem = buildItem({ id: 'eq-approval', accessLevel: ACCESS_LEVELS[1] });
+    const student = buildUser({ id: 'stu-01', name: 'Maya Lin', role: ROLES.STUDENT });
 
     const submitted = buildRequest({
       studentId: 'stu-01',
       itemId: 'eq-approval',
       itemIds: ['eq-approval'],
-      status: 'Submitted',
+      status: REQUEST_STATUSES[0],
     });
     assert.equal(canUserBookItem(restrictedItem, student, [submitted]).allowed, false);
 
-    const underReview = transitionRequest(submitted, 'Under review', '', FIXED_TODAY, 'faculty').request;
-    const approved = transitionRequest(underReview, 'Approved', 'Approved for lab use.', FIXED_TODAY, 'faculty').request;
+    const underReview = transitionRequest(submitted, REQUEST_STATUSES[1], '', FIXED_TODAY, ROLES.FACULTY).request;
+    const approved = transitionRequest(
+      underReview,
+      REQUEST_STATUSES[2],
+      'Approved for lab use.',
+      FIXED_TODAY,
+      ROLES.FACULTY
+    ).request;
     assert.equal(canUserBookItem(restrictedItem, student, [approved]).allowed, true);
   });
 

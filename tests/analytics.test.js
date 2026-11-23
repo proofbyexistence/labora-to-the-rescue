@@ -13,6 +13,7 @@ import {
   FIXED_TODAY,
   FIXED_TUESDAY,
 } from './helpers.js';
+import { REQUEST_STATUSES } from '../src/js/constants.ts';
 
 describe('getUtilizationByLab', () => {
   it('computes accurate bookedHours, capacityHours, and rounded utilization percentages per lab', () => {
@@ -97,7 +98,7 @@ describe('getSummary', () => {
       buildRequest({
         id: 'r-sub-1',
         itemId: 'eq-1',
-        status: 'Submitted',
+        status: REQUEST_STATUSES[0],
         preferredDate: FIXED_TUESDAY,
         preferredStart: '10:00',
         preferredDurationHours: 2,
@@ -105,7 +106,7 @@ describe('getSummary', () => {
       buildRequest({
         id: 'r-rev-1',
         itemId: 'eq-1',
-        status: 'Under review',
+        status: REQUEST_STATUSES[1],
         preferredDate: FIXED_TUESDAY,
         preferredStart: '10:00',
         preferredDurationHours: 2,
@@ -113,14 +114,14 @@ describe('getSummary', () => {
       buildRequest({
         id: 'r-app-recent',
         itemId: 'eq-1',
-        status: 'Approved',
+        status: REQUEST_STATUSES[2],
         submittedAt: '2026-11-10',
         reviewedAt: '2026-11-20',
       }),
       buildRequest({
         id: 'r-app-old',
         itemId: 'eq-1',
-        status: 'Approved',
+        status: REQUEST_STATUSES[2],
         submittedAt: '2026-11-01',
         reviewedAt: '2026-11-10',
       }),
