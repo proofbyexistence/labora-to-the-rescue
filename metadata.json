@@ -1,0 +1,8 @@
+{
+  "name": "Remix LABORA — Campus Lab Resource Notebook",
+  "description": "Every lab. One notebook. LabLink platform for discovering campus laboratory equipment, smart slot booking, access requests, and faculty approvals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

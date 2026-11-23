@@ -1,0 +1,199 @@
+/* CSS-only animation for the stick-figure daydream strip (transform + opacity only). */
+
+.daydream-strip .daydream-anim {
+  animation-play-state: running;
+}
+
+.daydream-strip[data-paused="false"] .daydream-anim {
+  will-change: transform, opacity;
+}
+
+.daydream-strip[data-paused="true"] .daydream-anim {
+  animation-play-state: paused;
+}
+
+/* Gentle head bob and subtle tilt */
+.daydream-head-anim {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: daydream-head-bob 6s ease-in-out infinite;
+}
+
+/* Calm blink every few seconds */
+.daydream-eyes-anim {
+  transform-box: fill-box;
+  transform-origin: center center;
+  animation: daydream-eye-blink 4.8s ease-in-out infinite;
+}
+
+/* Subtle finger/hand tap on the lab desk */
+.daydream-hand-anim {
+  transform-box: view-box;
+  transform-origin: 152px 58px;
+  animation: daydream-hand-tap 3.6s ease-in-out infinite;
+}
+
+/* Thought cloud floating calmly up and down */
+.daydream-bubble-anim {
+  transform-box: fill-box;
+  transform-origin: center center;
+  animation: daydream-bubble-float 5.6s ease-in-out infinite;
+}
+
+/* Four lab doodles cross-fading sequentially across a 16-second loop.
+   Doodle 1 starts at opacity 1 so reduced-motion paused still frame shows a clear doodle. */
+.daydream-doodle-1 {
+  animation: daydream-slot-1 16s ease-in-out infinite;
+}
+
+.daydream-doodle-2 {
+  opacity: 0;
+  animation: daydream-slot-2 16s ease-in-out infinite;
+}
+
+.daydream-doodle-3 {
+  opacity: 0;
+  animation: daydream-slot-3 16s ease-in-out infinite;
+}
+
+.daydream-doodle-4 {
+  opacity: 0;
+  animation: daydream-slot-4 16s ease-in-out infinite;
+}
+
+@keyframes daydream-head-bob {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(-1.5deg);
+  }
+  50% {
+    transform: translateY(-2px) rotate(2.5deg);
+  }
+}
+
+@keyframes daydream-eye-blink {
+  0%,
+  44%,
+  49%,
+  100% {
+    transform: scaleY(1);
+  }
+  46.5% {
+    transform: scaleY(0.14);
+  }
+}
+
+@keyframes daydream-hand-tap {
+  0%,
+  72%,
+  100% {
+    transform: rotate(0deg) translateY(0px);
+  }
+  78% {
+    transform: rotate(4deg) translateY(1.5px);
+  }
+  84% {
+    transform: rotate(-1.5deg) translateY(-1px);
+  }
+  90% {
+    transform: rotate(3.5deg) translateY(1.5px);
+  }
+}
+
+@keyframes daydream-bubble-float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes daydream-slot-1 {
+  0%,
+  18% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  25%,
+  93% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes daydream-slot-2 {
+  0%,
+  20% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  27%,
+  43% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50%,
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes daydream-slot-3 {
+  0%,
+  45% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  52%,
+  68% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  75%,
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes daydream-slot-4 {
+  0%,
+  70% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  77%,
+  93% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  99%,
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .daydream-strip .daydream-anim {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .daydream-strip .daydream-doodle-1 {
+    opacity: 1 !important;
+  }
+
+  .daydream-strip .daydream-doodle-2,
+  .daydream-strip .daydream-doodle-3,
+  .daydream-strip .daydream-doodle-4 {
+    opacity: 0 !important;
+  }
+}

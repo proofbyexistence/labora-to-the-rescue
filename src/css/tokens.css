@@ -1,0 +1,86 @@
+/* Shared LABORA Design Tokens — Single source of truth across all 5 pages */
+:root {
+  color-scheme: light;
+  /* Core Light Notebook Palette (unchanged) */
+  --lavender: #CDB9F2;
+  --lavender-soft: #EFE8FC;
+  --ink: #1F1F24;
+  --on-lavender: #1F1F24;
+  --white: #FFFFFF;
+  --paper: #FBFAF6;
+  --grid: #E6E1F2;
+
+  /* Surfaces & Controls */
+  --tape-bg: rgba(205, 185, 242, 0.72);
+  --backdrop: rgba(31, 31, 36, 0.56);
+  --placeholder: #595964;
+  --border-subtle: #686475;
+  --disabled-bg: #ECEAE4;
+  --disabled-ink: #4A4A55;
+  --disabled-border: #686475;
+
+  /* Focus Indicator Token (3px crisp ring, >= 3:1 contrast in both themes) */
+  --focus-ring: #1F1F24;
+  --focus-ring-offset: #FFFFFF;
+
+  /* Semantic Status Surfaces (paired with --ink text and explicit icon) */
+  --status-available-bg: #E4F5EA;
+  --status-limited-bg: #FFF1CC;
+  --status-booked-bg: #FCE2E2;
+
+  /* Typography */
+  --font-heading: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
+  --font-body: 'Patrick Hand', 'Segoe Print', 'Comic Sans MS', cursive, sans-serif;
+  --text-base: 1.125rem;
+  --leading-body: 1.6;
+
+  /* Spacing Scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* Radii & Borders */
+  --radius-card: 14px;
+  --radius-btn: 10px;
+  --radius-tab: 10px;
+  --radius-badge: 8px;
+  --border-width: 2px;
+
+  /* Shadows */
+  --shadow-card: 4px 4px 0 rgba(31, 31, 36, 0.15);
+  --shadow-lift: 3px 3px 0 var(--ink);
+}
+
+/* Dark Ink-Purple Notebook Theme — overrides tokens only, no duplicated component CSS */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --lavender: #CDB9F2;
+  --lavender-soft: #352F4B;
+  --ink: #F1EEF8;
+  --on-lavender: #1F1F24;
+  --white: #262335;
+  --paper: #1C1A24;
+  --grid: #2E2A3D;
+
+  --tape-bg: rgba(205, 185, 242, 0.42);
+  --backdrop: rgba(12, 10, 18, 0.76);
+  --placeholder: #C2BADB;
+  --border-subtle: #9E96B8;
+  --disabled-bg: #232030;
+  --disabled-ink: #B4ACD0;
+  --disabled-border: #8B82A8;
+
+  --focus-ring: #F1EEF8;
+  --focus-ring-offset: #1C1A24;
+
+  --status-available-bg: #1B4332;
+  --status-limited-bg: #4A3810;
+  --status-booked-bg: #54222A;
+
+  --shadow-card: 4px 4px 0 rgba(205, 185, 242, 0.24);
+  --shadow-lift: 3px 3px 0 var(--ink);
+}

@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@import "./css/tokens.css";
+@import "./css/pages.css";
+@import "./css/daydream.css";
+
+@layer base {
+  html,
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: var(--leading-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
