@@ -66,6 +66,12 @@ interface PersistedState {
   activeRole: UserRole;
 }
 
+export interface StorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
 const DEFAULT_SLOT_WINDOWS = [
   { dayOffset: 0, window: '14:00 – 16:00', durationHours: 2 },
   { dayOffset: 0, window: '16:30 – 18:30', durationHours: 2 },
@@ -271,11 +277,24 @@ function isValidPersistedRequest(
   );
 }
 
-function clearCorruptStorage(): void {
+function resolveStorage(storageOverride?: StorageLike | null): StorageLike | null {
+  if (storageOverride !== undefined) {
+    return storageOverride;
+  }
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.removeItem(STORAGE_KEY);
+      return window.localStorage;
     }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function clearCorruptStorage(storageOverride?: StorageLike | null): void {
+  try {
+    const storage = resolveStorage(storageOverride);
+    storage?.removeItem(STORAGE_KEY);
   } catch {
     // Ignore storage removal errors in restricted environments.
   }
@@ -329,44 +348,53 @@ export function validatePersistedState(raw: unknown): PersistedState | null {
   };
 }
 
-function loadInitialState(): {
+function loadInitialState(storageOverride?: StorageLike | null): {
   dataset: LabDataset;
   activeRole: UserRole;
+  loadedFromStorage: boolean;
 } {
   const base = cloneDataset();
   base.slots = ensureSlotsForAllItems(base.items, base.slots);
 
   // Guard localStorage access and validate the full persisted schema before hydrating.
   try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+    const storage = resolveStorage(storageOverride);
+    if (storage) {
+      const raw = storage.getItem(STORAGE_KEY);
       if (raw) {
         if (raw.length > 500_000) {
-          clearCorruptStorage();
-          return { dataset: base, activeRole: 'student' };
+          clearCorruptStorage(storage);
+          return { dataset: base, activeRole: 'student', loadedFromStorage: false };
         }
         const parsed = JSON.parse(raw) as unknown;
         const validated = validatePersistedState(parsed);
         if (!validated) {
-          clearCorruptStorage();
-          return { dataset: base, activeRole: 'student' };
+          clearCorruptStorage(storage);
+          return { dataset: base, activeRole: 'student', loadedFromStorage: false };
         }
         base.departments = validated.departments;
         base.labs = validated.labs;
         base.items = validated.items;
         base.slots = validated.slots;
         base.requests = validated.requests;
-        return { dataset: base, activeRole: validated.activeRole };
+        return { dataset: base, activeRole: validated.activeRole, loadedFromStorage: true };
       }
     }
   } catch {
-    clearCorruptStorage();
+    clearCorruptStorage(storageOverride);
   }
 
-  return { dataset: base, activeRole: 'student' };
+  return { dataset: base, activeRole: 'student', loadedFromStorage: false };
 }
 
-let state = loadInitialState();
+const initialLoaded = loadInitialState();
+let state: {
+  dataset: LabDataset;
+  activeRole: UserRole;
+} = {
+  dataset: initialLoaded.dataset,
+  activeRole: initialLoaded.activeRole,
+};
 let stateVersion = 0;
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let persistListenersRegistered = false;
@@ -375,13 +403,34 @@ export function getStateVersion(): number {
   return stateVersion;
 }
 
-export function flushPersistedState(): void {
+export function reloadLabStore(storageOverride?: StorageLike | null): {
+  activeRole: UserRole;
+  loadedFromStorage: boolean;
+} {
+  stateVersion += 1;
+  if (persistTimer !== null) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  const loaded = loadInitialState(storageOverride);
+  state = {
+    dataset: loaded.dataset,
+    activeRole: loaded.activeRole,
+  };
+  return {
+    activeRole: loaded.activeRole,
+    loadedFromStorage: loaded.loadedFromStorage,
+  };
+}
+
+export function flushPersistedState(storageOverride?: StorageLike | null): void {
   if (persistTimer !== null) {
     clearTimeout(persistTimer);
     persistTimer = null;
   }
   try {
-    if (typeof window !== 'undefined' && window.localStorage) {
+    const storage = resolveStorage(storageOverride);
+    if (storage) {
       const payload: PersistedState = {
         departments: state.dataset.departments,
         labs: state.dataset.labs,
@@ -390,7 +439,7 @@ export function flushPersistedState(): void {
         requests: state.dataset.requests,
         activeRole: state.activeRole,
       };
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      storage.setItem(STORAGE_KEY, JSON.stringify(payload));
     }
   } catch {
     // Ignore storage quota or security errors; state remains active in memory.
@@ -400,7 +449,9 @@ export function flushPersistedState(): void {
 function registerFlushListeners(): void {
   if (persistListenersRegistered || typeof window === 'undefined') return;
   persistListenersRegistered = true;
-  window.addEventListener('pagehide', flushPersistedState);
+  window.addEventListener('pagehide', () => {
+    flushPersistedState();
+  });
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && persistTimer !== null) {
